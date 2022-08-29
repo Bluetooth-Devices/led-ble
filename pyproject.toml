@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "led-ble"
-version = "0.5.2"
+version = "0.5.3"
 description = "Control a wide range of LED BLE devices"
 authors = ["J. Nick Koston <nick@koston.org>"]
 license = "Apache Software License 2.0"

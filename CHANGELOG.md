@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.5.3 (2022-08-29)
+### Fix
+* Brightness ([#14](https://github.com/Bluetooth-Devices/led-ble/issues/14)) ([`01dcf7b`](https://github.com/Bluetooth-Devices/led-ble/commit/01dcf7bd5f92a0c487924211490ba0498708100d))
+
 ## v0.5.2 (2022-08-29)
 ### Fix
 * Missing exports ([#13](https://github.com/Bluetooth-Devices/led-ble/issues/13)) ([`911c2a0`](https://github.com/Bluetooth-Devices/led-ble/commit/911c2a0dcbdc4041247fe53a060ae4a50a85faa7))
