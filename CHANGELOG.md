@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.5.4 (2022-08-29)
+### Fix
+* W channel not being cleared on rgb set ([#15](https://github.com/Bluetooth-Devices/led-ble/issues/15)) ([`048bdff`](https://github.com/Bluetooth-Devices/led-ble/commit/048bdffd52ea78ba66a1d33793db58a725bc894b))
+
 ## v0.5.3 (2022-08-29)
 ### Fix
 * Brightness ([#14](https://github.com/Bluetooth-Devices/led-ble/issues/14)) ([`01dcf7b`](https://github.com/Bluetooth-Devices/led-ble/commit/01dcf7bd5f92a0c487924211490ba0498708100d))
