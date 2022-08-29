@@ -397,6 +397,7 @@ class LEDBLE:
             for attempt in range(max_attempts):
                 try:
                     await self._send_command_locked(command)
+                    return
                 except BleakNotFoundError:
                     _LOGGER.error(
                         "%s: device not found, no longer in range, or poor RSSI: %s",
@@ -446,7 +447,6 @@ class LEDBLE:
             raise CharacteristicMissingError("Read characteristic missing")
         if not self._write_char:
             raise CharacteristicMissingError("Write characteristic missing")
-        _LOGGER.debug("%s: Sending command: %s", self.name)
         await self._client.write_gatt_char(self._write_char, command, False)
 
     def _resolve_characteristics(self, services: BleakGATTServiceCollection) -> bool:
