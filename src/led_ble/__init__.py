@@ -305,6 +305,9 @@ class LEDBLE:
 
     def _notification_handler(self, _sender: int, data: bytearray) -> None:
         """Handle notification responses."""
+        _LOGGER.debug(
+            "%s: Notification received; RSSI: %s: %s", self.name, self.rssi, data.hex()
+        )
         on = int(data[2]) == 0x23
         r = int(data[6])
         g = int(data[7])
@@ -392,13 +395,6 @@ class LEDBLE:
         if retry is None:
             retry = self._retry_count
         _LOGGER.debug("%s: Sending command %s", self.name, command)
-        if self._operation_lock.locked():
-            _LOGGER.debug(
-                "%s: Operation already in progress, waiting for it to complete; RSSI: %s",
-                self.name,
-                self.rssi,
-            )
-
         max_attempts = retry + 1
         if self._operation_lock.locked():
             _LOGGER.debug(
