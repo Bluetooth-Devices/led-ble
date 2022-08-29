@@ -8,3 +8,4 @@ class LEDBLEState:
 
     power: bool = False
     rgb: tuple[int, int, int] = (0, 0, 0)
+    w: int = 0
