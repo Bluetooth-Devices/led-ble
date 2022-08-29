@@ -4,6 +4,7 @@ import asyncio
 import colorsys
 import logging
 from collections.abc import Callable
+from dataclasses import replace
 from typing import Any, TypeVar, cast
 
 from bleak.backends.device import BLEDevice
@@ -17,16 +18,16 @@ from bleak_retry_connector import (
     establish_connection,
 )
 
-from led_ble.const import (
+from .const import (
     POSSIBLE_READ_CHARACTERISTIC_UUIDS,
     POSSIBLE_WRITE_CHARACTERISTIC_UUIDS,
     POWER_OFF_COMAMND,
     POWER_ON_COMMAND,
     STATE_COMMAND,
 )
-
 from .exceptions import CharacteristicMissingError
 from .models import LEDBLEState
+from .util import rgbw_brightness
 
 __version__ = "0.5.0"
 
@@ -201,15 +202,7 @@ class LEDBLE:
         """Turn on."""
         _LOGGER.debug("%s: Turn on", self.name)
         await self._send_command(POWER_ON_COMMAND)
-        self._state = LEDBLEState(
-            rgb=self.rgb,
-            w=self.w,
-            power=True,
-            mode=self.mode,
-            speed=self.speed,
-            model_num=self.model_num,
-            preset_pattern=self.preset_pattern,
-        )
+        self._state = replace(self._state, power=True)
         self._fire_callbacks()
 
     @retry_bluetooth_connection_error
@@ -217,15 +210,7 @@ class LEDBLE:
         """Turn off."""
         _LOGGER.debug("%s: Turn off", self.name)
         await self._send_command(POWER_OFF_COMAMND)
-        self._state = LEDBLEState(
-            rgb=self.rgb,
-            w=self.w,
-            power=False,
-            mode=self.mode,
-            speed=self.speed,
-            model_num=self.model_num,
-            preset_pattern=self.preset_pattern,
-        )
+        self._state = replace(self._state, power=False)
         self._fire_callbacks()
 
     async def set_brightness(self, brightness: int) -> None:
@@ -247,14 +232,7 @@ class LEDBLE:
         _LOGGER.debug("%s: Set rgb after brightness: %s", self.name, rgb)
 
         await self._send_command(b"\x56" + bytes(rgb) + b"\x00\xF0\xAA")
-        self._state = LEDBLEState(
-            rgb=rgb,
-            power=True,
-            mode=self.mode,
-            speed=self.speed,
-            model_num=self.model_num,
-            preset_pattern=self.preset_pattern,
-        )
+        self._state = replace(self._state, rgb=rgb, brightness=brightness)
         self._fire_callbacks()
 
     @retry_bluetooth_connection_error
@@ -270,14 +248,11 @@ class LEDBLE:
         _LOGGER.debug("%s: Set rgbw after brightness: %s", self.name, rgbw)
 
         await self._send_command(b"\x56" + bytes(rgbw) + b"\x00\xAA")
-        self._state = LEDBLEState(
+        self._state = replace(
+            self._state,
             rgb=(rgbw[0], rgbw[1], rgbw[2]),
             w=rgbw[3],
-            power=True,
-            mode=self.mode,
-            speed=self.speed,
-            model_num=self.model_num,
-            preset_pattern=self.preset_pattern,
+            brightness=brightness,
         )
         self._fire_callbacks()
 
@@ -290,14 +265,8 @@ class LEDBLE:
         await self._send_command(
             b"\x56\x00\x00\x00" + bytes([brightness]) + b"\x0F\xAA"
         )
-        self._state = LEDBLEState(
-            rgb=(0, 0, 0),
-            w=brightness,
-            power=True,
-            mode=self.mode,
-            speed=self.speed,
-            model_num=self.model_num,
-            preset_pattern=self.preset_pattern,
+        self._state = replace(
+            self._state, rgb=(0, 0, 0), w=brightness, brightness=brightness
         )
         self._fire_callbacks()
 
@@ -374,6 +343,11 @@ class LEDBLE:
         return self._state.model_num
 
     @property
+    def version_num(self) -> int:
+        """Return the version num."""
+        return self._state.version_num
+
+    @property
     def preset_pattern(self) -> int:
         """Return the preset_pattern."""
         return self._state.preset_pattern
@@ -399,8 +373,9 @@ class LEDBLE:
         g = data[7]
         b = data[8]
         w = data[9]
+        version = data[10]
         self._state = LEDBLEState(
-            on, (r, g, b), w, model_num, preset_pattern, mode, speed
+            on, (r, g, b), w, model_num, preset_pattern, mode, speed, version
         )
 
         _LOGGER.debug(
@@ -565,37 +540,3 @@ class LEDBLE:
                 self._write_char = char
                 break
         return bool(self._read_char and self._write_char)
-
-
-def rgbw_brightness(
-    rgbw_data: tuple[int, int, int, int],
-    brightness: int | None = None,
-) -> tuple[int, int, int, int]:
-    """Convert rgbw to brightness."""
-    original_r, original_g, original_b = rgbw_data[0:3]
-    h, s, v = colorsys.rgb_to_hsv(original_r / 255, original_g / 255, original_b / 255)
-    color_brightness = round(v * 255)
-    ww_brightness = rgbw_data[3]
-    current_brightness = round((color_brightness + ww_brightness) / 2)
-
-    if not brightness or brightness == current_brightness:
-        return rgbw_data
-
-    if brightness < current_brightness:
-        change_brightness_pct = (current_brightness - brightness) / current_brightness
-        ww_brightness = round(ww_brightness * (1 - change_brightness_pct))
-        color_brightness = round(color_brightness * (1 - change_brightness_pct))
-
-    else:
-        change_brightness_pct = (brightness - current_brightness) / (
-            255 - current_brightness
-        )
-        ww_brightness = round(
-            (255 - ww_brightness) * change_brightness_pct + ww_brightness
-        )
-        color_brightness = round(
-            (255 - color_brightness) * change_brightness_pct + color_brightness
-        )
-
-    r, g, b = colorsys.hsv_to_rgb(h, s, color_brightness / 255)
-    return (round(r * 255), round(g * 255), round(b * 255), ww_brightness)

@@ -13,3 +13,4 @@ class LEDBLEState:
     preset_pattern: int = 0
     mode: int = 0
     speed: int = 0
+    version_num: int = 0
