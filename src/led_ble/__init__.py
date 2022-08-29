@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import colorsys
 import logging
-import math
 from collections.abc import Callable
 from typing import Any, TypeVar, cast
 
@@ -221,15 +220,11 @@ class LEDBLE:
         for value in rgb:
             if not 0 <= value <= 255:
                 raise ValueError("Value {} is outside the valid range of 0-255")
-        rgb_vals = tuple(
-            255 if val == 255 else int(math.ceil(val * 31 / 255)) for val in rgb
-        )
-        rgb_vals = cast(tuple[int, int, int], rgb_vals)
         if brightness is not None:
-            rgb_vals = self._calculate_brightness(rgb_vals, brightness)
+            rgb = self._calculate_brightness(rgb, brightness)
 
-        await self._send_command(b"\x56" + bytes(rgb_vals) + b"\x00\xF0\xAA")
-        self._state = LEDBLEState(rgb=rgb_vals, power=True)
+        await self._send_command(b"\x56" + bytes(rgb) + b"\x00\xF0\xAA")
+        self._state = LEDBLEState(rgb=rgb, power=True)
         self._fire_callbacks()
 
     async def stop(self) -> None:
@@ -308,9 +303,6 @@ class LEDBLE:
         r = int(data[6])
         g = int(data[7])
         b = int(data[8])
-        r = int(min(r * 255 / 31, 255))
-        g = int(min(g * 255 / 31, 255))
-        b = int(min(b * 255 / 31, 255))
         self._state = LEDBLEState(on, (r, g, b))
         self._fire_callbacks()
 
