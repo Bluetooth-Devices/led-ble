@@ -49,19 +49,6 @@ _LOGGER = logging.getLogger(__name__)
 DEFAULT_ATTEMPTS = 3
 
 
-def operation_lock(func: WrapFuncType) -> WrapFuncType:
-    """Define a wrapper to only allow a single operation at a time."""
-
-    async def _async_wrap_operation_lock(
-        self: "LEDBLE", *args: Any, **kwargs: Any
-    ) -> None:
-        _LOGGER.debug("%s: Acquiring lock", self.name)
-        async with self._operation_lock:
-            return await func(self, *args, **kwargs)
-
-    return cast(WrapFuncType, _async_wrap_operation_lock)
-
-
 def retry_bluetooth_connection_error(func: WrapFuncType) -> WrapFuncType:
     """Define a wrapper to retry on bleak error.
 
@@ -198,37 +185,39 @@ class LEDBLE:
         _, _, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
         return int(v * 255)
 
-    @operation_lock
     @retry_bluetooth_connection_error
     async def update(self) -> None:
         """Update the LEDBLE."""
-        await self._ensure_connected()
+        _LOGGER.debug("%s: Updating", self.name)
         await self._send_command(STATE_COMMAND)
 
-    @operation_lock
     @retry_bluetooth_connection_error
     async def turn_on(self) -> None:
         """Turn on."""
-        await self._ensure_connected()
+        _LOGGER.debug("%s: Turn on", self.name)
         await self._send_command(POWER_ON_COMMAND)
+        self._state = LEDBLEState(rgb=self.rgb, power=True)
+        self._fire_callbacks()
 
-    @operation_lock
     @retry_bluetooth_connection_error
     async def turn_off(self) -> None:
         """Turn off."""
-        await self._ensure_connected()
+        _LOGGER.debug("%s: Turn off", self.name)
         await self._send_command(POWER_OFF_COMAMND)
+        self._state = LEDBLEState(rgb=self.rgb, power=False)
+        self._fire_callbacks()
 
     async def set_brightness(self, brightness: int) -> None:
         """Set the brightness."""
+        _LOGGER.debug("%s: Set brightness: %s", self.name, brightness)
         await self.set_rgb(self.rgb_unscaled, brightness)
 
-    @operation_lock
     @retry_bluetooth_connection_error
     async def set_rgb(
         self, rgb: tuple[int, int, int], brightness: int | None = None
     ) -> None:
         """Set rgb."""
+        _LOGGER.debug("%s: Set rgb: %s brightness: %s", self.name, rgb, brightness)
         for value in rgb:
             if not 0 <= value <= 255:
                 raise ValueError("Value {} is outside the valid range of 0-255")
@@ -240,6 +229,13 @@ class LEDBLE:
             rgb_vals = self._calculate_brightness(rgb_vals, brightness)
 
         await self._send_command(b"\x56" + bytes(rgb_vals) + b"\x00\xF0\xAA")
+        self._state = LEDBLEState(rgb=rgb_vals, power=True)
+        self._fire_callbacks()
+
+    async def stop(self) -> None:
+        """Stop the LEDBLE."""
+        _LOGGER.debug("%s: Stop", self.name)
+        await self._execute_disconnect()
 
     def _calculate_brightness(
         self, rgb: tuple[int, int, int], level: int
@@ -305,6 +301,9 @@ class LEDBLE:
 
     def _notification_handler(self, _sender: int, data: bytearray) -> None:
         """Handle notification responses."""
+        _LOGGER.debug(
+            "%s: Notification received; RSSI: %s: %s", self.name, self.rssi, data.hex()
+        )
         on = int(data[2]) == 0x23
         r = int(data[6])
         g = int(data[7])
@@ -360,11 +359,11 @@ class LEDBLE:
             self._read_char = None
             self._write_char = None
             if client and client.is_connected:
+                await client.stop_notify(self._read_char)
                 await client.disconnect()
 
     async def _send_command_locked(self, command: bytes) -> None:
         """Send command to device and read response."""
-        await self._ensure_connected()
         try:
             await self._execute_command_locked(command)
         except BleakDBusError as ex:
@@ -389,16 +388,10 @@ class LEDBLE:
 
     async def _send_command(self, command: bytes, retry: int | None = None) -> None:
         """Send command to device and read response."""
+        await self._ensure_connected()
         if retry is None:
             retry = self._retry_count
         _LOGGER.debug("%s: Sending command %s", self.name, command)
-        if self._operation_lock.locked():
-            _LOGGER.debug(
-                "%s: Operation already in progress, waiting for it to complete; RSSI: %s",
-                self.name,
-                self.rssi,
-            )
-
         max_attempts = retry + 1
         if self._operation_lock.locked():
             _LOGGER.debug(
@@ -410,6 +403,7 @@ class LEDBLE:
             for attempt in range(max_attempts):
                 try:
                     await self._send_command_locked(command)
+                    return
                 except BleakNotFoundError:
                     _LOGGER.error(
                         "%s: device not found, no longer in range, or poor RSSI: %s",
@@ -459,7 +453,6 @@ class LEDBLE:
             raise CharacteristicMissingError("Read characteristic missing")
         if not self._write_char:
             raise CharacteristicMissingError("Write characteristic missing")
-        _LOGGER.debug("%s: Sending command: %s", self.name)
         await self._client.write_gatt_char(self._write_char, command, False)
 
     def _resolve_characteristics(self, services: BleakGATTServiceCollection) -> bool:
