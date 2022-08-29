@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.5.1 (2022-08-29)
+### Fix
+* Cleanups ([#12](https://github.com/Bluetooth-Devices/led-ble/issues/12)) ([`9d3ae2a`](https://github.com/Bluetooth-Devices/led-ble/commit/9d3ae2a80bfc9d17bc9603003852b010a56a2494))
+
 ## v0.5.0 (2022-08-29)
 ### Feature
 * Add rgbw support ([#11](https://github.com/Bluetooth-Devices/led-ble/issues/11)) ([`14ae97b`](https://github.com/Bluetooth-Devices/led-ble/commit/14ae97ba4b51fb7ebb81634028e1eac623e9a3f5))
