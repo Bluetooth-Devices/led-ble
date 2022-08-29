@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.2.0 (2022-08-29)
+### Feature
+* Add example ([#4](https://github.com/Bluetooth-Devices/led-ble/issues/4)) ([`9d25f2a`](https://github.com/Bluetooth-Devices/led-ble/commit/9d25f2a2fd1043cf4679215ce16c0888f9ed6fa8))
+
 ## v0.1.0 (2022-08-29)
 ### Feature
 * First release ([#3](https://github.com/Bluetooth-Devices/led-ble/issues/3)) ([`0875dc4`](https://github.com/Bluetooth-Devices/led-ble/commit/0875dc4ca17960cb634b66c3a3c61f9ff2c5f490))
