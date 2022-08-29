@@ -258,6 +258,30 @@ class LEDBLE:
         self._fire_callbacks()
 
     @retry_bluetooth_connection_error
+    async def set_rgbw(
+        self, rgbw: tuple[int, int, int, int], brightness: int | None = None
+    ) -> None:
+        """Set rgbw."""
+        _LOGGER.debug("%s: Set rgbw: %s brightness: %s", self.name, rgbw, brightness)
+        for value in rgbw:
+            if not 0 <= value <= 255:
+                raise ValueError("Value {} is outside the valid range of 0-255")
+        rgbw = rgbw_brightness(rgbw, brightness)
+        _LOGGER.debug("%s: Set rgbw after brightness: %s", self.name, rgbw)
+
+        await self._send_command(b"\x56" + bytes(rgbw) + b"\x00\xAA")
+        self._state = LEDBLEState(
+            rgb=(rgbw[0], rgbw[1], rgbw[2]),
+            w=rgbw[3],
+            power=True,
+            mode=self.mode,
+            speed=self.speed,
+            model_num=self.model_num,
+            preset_pattern=self.preset_pattern,
+        )
+        self._fire_callbacks()
+
+    @retry_bluetooth_connection_error
     async def set_white(self, brightness: int) -> None:
         """Set rgb."""
         _LOGGER.debug("%s: Set white: %s", self.name, brightness)
@@ -541,3 +565,37 @@ class LEDBLE:
                 self._write_char = char
                 break
         return bool(self._read_char and self._write_char)
+
+
+def rgbw_brightness(
+    rgbw_data: tuple[int, int, int, int],
+    brightness: int | None = None,
+) -> tuple[int, int, int, int]:
+    """Convert rgbw to brightness."""
+    original_r, original_g, original_b = rgbw_data[0:3]
+    h, s, v = colorsys.rgb_to_hsv(original_r / 255, original_g / 255, original_b / 255)
+    color_brightness = round(v * 255)
+    ww_brightness = rgbw_data[3]
+    current_brightness = round((color_brightness + ww_brightness) / 2)
+
+    if not brightness or brightness == current_brightness:
+        return rgbw_data
+
+    if brightness < current_brightness:
+        change_brightness_pct = (current_brightness - brightness) / current_brightness
+        ww_brightness = round(ww_brightness * (1 - change_brightness_pct))
+        color_brightness = round(color_brightness * (1 - change_brightness_pct))
+
+    else:
+        change_brightness_pct = (brightness - current_brightness) / (
+            255 - current_brightness
+        )
+        ww_brightness = round(
+            (255 - ww_brightness) * change_brightness_pct + ww_brightness
+        )
+        color_brightness = round(
+            (255 - color_brightness) * change_brightness_pct + color_brightness
+        )
+
+    r, g, b = colorsys.hsv_to_rgb(h, s, color_brightness / 255)
+    return (round(r * 255), round(g * 255), round(b * 255), ww_brightness)

@@ -41,6 +41,8 @@ async def run() -> None:
     await asyncio.sleep(1)
     await led.set_rgb((0, 0, 255), 255)
     await asyncio.sleep(1)
+    await led.set_rgbw((255, 255, 255, 128), 255)
+    await asyncio.sleep(1)
     await led.turn_off()
     await led.update()
     cancel_callback()
