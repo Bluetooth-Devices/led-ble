@@ -202,6 +202,7 @@ class LEDBLE:
     @retry_bluetooth_connection_error
     async def update(self) -> None:
         """Update the LEDBLE."""
+        _LOGGER.debug("%s: Updating", self.name)
         await self._ensure_connected()
         await self._send_command(STATE_COMMAND)
 
@@ -209,6 +210,7 @@ class LEDBLE:
     @retry_bluetooth_connection_error
     async def turn_on(self) -> None:
         """Turn on."""
+        _LOGGER.debug("%s: Turn on", self.name)
         await self._ensure_connected()
         await self._send_command(POWER_ON_COMMAND)
 
@@ -216,11 +218,13 @@ class LEDBLE:
     @retry_bluetooth_connection_error
     async def turn_off(self) -> None:
         """Turn off."""
+        _LOGGER.debug("%s: Turn off", self.name)
         await self._ensure_connected()
         await self._send_command(POWER_OFF_COMAMND)
 
     async def set_brightness(self, brightness: int) -> None:
         """Set the brightness."""
+        _LOGGER.debug("%s: Set brightness: %s", self.name, brightness)
         await self.set_rgb(self.rgb_unscaled, brightness)
 
     @operation_lock
@@ -229,6 +233,7 @@ class LEDBLE:
         self, rgb: tuple[int, int, int], brightness: int | None = None
     ) -> None:
         """Set rgb."""
+        _LOGGER.debug("%s: Set rgb: %s brightness: %s", self.name, rgb, brightness)
         for value in rgb:
             if not 0 <= value <= 255:
                 raise ValueError("Value {} is outside the valid range of 0-255")
@@ -243,6 +248,7 @@ class LEDBLE:
 
     async def stop(self) -> None:
         """Stop the LEDBLE."""
+        _LOGGER.debug("%s: Stop", self.name)
         await self._execute_disconnect()
 
     def _calculate_brightness(
@@ -372,7 +378,6 @@ class LEDBLE:
 
     async def _send_command_locked(self, command: bytes) -> None:
         """Send command to device and read response."""
-        await self._ensure_connected()
         try:
             await self._execute_command_locked(command)
         except BleakDBusError as ex:
