@@ -201,7 +201,15 @@ class LEDBLE:
         """Turn on."""
         _LOGGER.debug("%s: Turn on", self.name)
         await self._send_command(POWER_ON_COMMAND)
-        self._state = LEDBLEState(rgb=self.rgb, w=self.w, power=True)
+        self._state = LEDBLEState(
+            rgb=self.rgb,
+            w=self.w,
+            power=True,
+            mode=self.mode,
+            speed=self.speed,
+            model_num=self.model_num,
+            preset_pattern=self.preset_pattern,
+        )
         self._fire_callbacks()
 
     @retry_bluetooth_connection_error
@@ -209,7 +217,15 @@ class LEDBLE:
         """Turn off."""
         _LOGGER.debug("%s: Turn off", self.name)
         await self._send_command(POWER_OFF_COMAMND)
-        self._state = LEDBLEState(rgb=self.rgb, w=self.w, power=False)
+        self._state = LEDBLEState(
+            rgb=self.rgb,
+            w=self.w,
+            power=False,
+            mode=self.mode,
+            speed=self.speed,
+            model_num=self.model_num,
+            preset_pattern=self.preset_pattern,
+        )
         self._fire_callbacks()
 
     async def set_brightness(self, brightness: int) -> None:
@@ -230,7 +246,14 @@ class LEDBLE:
             rgb = self._calculate_brightness(rgb, brightness)
 
         await self._send_command(b"\x56" + bytes(rgb) + b"\x00\xF0\xAA")
-        self._state = LEDBLEState(rgb=rgb, power=True)
+        self._state = LEDBLEState(
+            rgb=rgb,
+            power=True,
+            mode=self.mode,
+            speed=self.speed,
+            model_num=self.model_num,
+            preset_pattern=self.preset_pattern,
+        )
         self._fire_callbacks()
 
     @retry_bluetooth_connection_error
@@ -242,7 +265,15 @@ class LEDBLE:
         await self._send_command(
             b"\x56\x00\x00\x00" + bytes([brightness]) + b"\x0F\xAA"
         )
-        self._state = LEDBLEState(rgb=(0, 0, 0), w=brightness, power=True)
+        self._state = LEDBLEState(
+            rgb=(0, 0, 0),
+            w=brightness,
+            power=True,
+            mode=self.mode,
+            speed=self.speed,
+            model_num=self.model_num,
+            preset_pattern=self.preset_pattern,
+        )
         self._fire_callbacks()
 
     async def stop(self) -> None:
@@ -312,17 +343,43 @@ class LEDBLE:
             )
             await client.start_notify(self._read_char, self._notification_handler)
 
+    @property
+    def model_num(self) -> int:
+        """Return the model num."""
+        return self._state.model_num
+
+    @property
+    def preset_pattern(self) -> int:
+        """Return the preset_pattern."""
+        return self._state.preset_pattern
+
+    @property
+    def mode(self) -> int:
+        """Return the mode."""
+        return self._state.mode
+
+    @property
+    def speed(self) -> int:
+        """Return the speed."""
+        return self._state.speed
+
     def _notification_handler(self, _sender: int, data: bytearray) -> None:
         """Handle notification responses."""
         _LOGGER.debug(
             "%s: Notification received; RSSI: %s: %s", self.name, self.rssi, data.hex()
         )
-        on = int(data[2]) == 0x23
-        r = int(data[6])
-        g = int(data[7])
-        b = int(data[8])
-        w = int(data[9])
-        self._state = LEDBLEState(on, (r, g, b), w)
+        model_num = data[1]
+        on = data[2] == 0x23
+        preset_pattern = data[3]
+        mode = data[4]
+        speed = data[5]
+        r = data[6]
+        g = data[7]
+        b = data[8]
+        w = data[9]
+        self._state = LEDBLEState(
+            on, (r, g, b), w, model_num, preset_pattern, mode, speed
+        )
         self._fire_callbacks()
 
     def _reset_disconnect_timer(self) -> None:
