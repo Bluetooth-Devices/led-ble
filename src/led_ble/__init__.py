@@ -203,7 +203,6 @@ class LEDBLE:
     async def update(self) -> None:
         """Update the LEDBLE."""
         _LOGGER.debug("%s: Updating", self.name)
-        await self._ensure_connected()
         await self._send_command(STATE_COMMAND)
 
     @operation_lock
@@ -211,7 +210,6 @@ class LEDBLE:
     async def turn_on(self) -> None:
         """Turn on."""
         _LOGGER.debug("%s: Turn on", self.name)
-        await self._ensure_connected()
         await self._send_command(POWER_ON_COMMAND)
 
     @operation_lock
@@ -219,7 +217,6 @@ class LEDBLE:
     async def turn_off(self) -> None:
         """Turn off."""
         _LOGGER.debug("%s: Turn off", self.name)
-        await self._ensure_connected()
         await self._send_command(POWER_OFF_COMAMND)
 
     async def set_brightness(self, brightness: int) -> None:
@@ -402,6 +399,7 @@ class LEDBLE:
 
     async def _send_command(self, command: bytes, retry: int | None = None) -> None:
         """Send command to device and read response."""
+        await self._ensure_connected()
         if retry is None:
             retry = self._retry_count
         _LOGGER.debug("%s: Sending command %s", self.name, command)
