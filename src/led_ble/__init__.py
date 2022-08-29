@@ -166,6 +166,10 @@ class LEDBLE:
         return self._state.rgb
 
     @property
+    def w(self) -> int:
+        return self._state.w
+
+    @property
     def rgb_unscaled(self) -> tuple[int, int, int]:
         """Return the unscaled RGB."""
         r, g, b = self.rgb
@@ -180,6 +184,8 @@ class LEDBLE:
     @property
     def brightness(self) -> int:
         """Return current brightness 0-255."""
+        if self.w:
+            return self.w
         r, g, b = self.rgb
         _, _, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
         return int(v * 255)
@@ -195,7 +201,7 @@ class LEDBLE:
         """Turn on."""
         _LOGGER.debug("%s: Turn on", self.name)
         await self._send_command(POWER_ON_COMMAND)
-        self._state = LEDBLEState(rgb=self.rgb, power=True)
+        self._state = LEDBLEState(rgb=self.rgb, w=self.w, power=True)
         self._fire_callbacks()
 
     @retry_bluetooth_connection_error
@@ -203,7 +209,7 @@ class LEDBLE:
         """Turn off."""
         _LOGGER.debug("%s: Turn off", self.name)
         await self._send_command(POWER_OFF_COMAMND)
-        self._state = LEDBLEState(rgb=self.rgb, power=False)
+        self._state = LEDBLEState(rgb=self.rgb, w=self.w, power=False)
         self._fire_callbacks()
 
     async def set_brightness(self, brightness: int) -> None:
@@ -225,6 +231,18 @@ class LEDBLE:
 
         await self._send_command(b"\x56" + bytes(rgb) + b"\x00\xF0\xAA")
         self._state = LEDBLEState(rgb=rgb, power=True)
+        self._fire_callbacks()
+
+    @retry_bluetooth_connection_error
+    async def set_white(self, brightness: int) -> None:
+        """Set rgb."""
+        _LOGGER.debug("%s: Set white: %s", self.name, brightness)
+        if not 0 <= brightness <= 255:
+            raise ValueError("Value {} is outside the valid range of 0-255")
+        await self._send_command(
+            b"\x56\x00\x00\x00" + bytes([brightness]) + b"\x0F\xAA"
+        )
+        self._state = LEDBLEState(rgb=(0, 0, 0), w=brightness, power=True)
         self._fire_callbacks()
 
     async def stop(self) -> None:
@@ -303,7 +321,8 @@ class LEDBLE:
         r = int(data[6])
         g = int(data[7])
         b = int(data[8])
-        self._state = LEDBLEState(on, (r, g, b))
+        w = int(data[9])
+        self._state = LEDBLEState(on, (r, g, b), w)
         self._fire_callbacks()
 
     def _reset_disconnect_timer(self) -> None:
