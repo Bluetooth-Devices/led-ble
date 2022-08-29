@@ -196,12 +196,16 @@ class LEDBLE:
         """Turn on."""
         _LOGGER.debug("%s: Turn on", self.name)
         await self._send_command(POWER_ON_COMMAND)
+        self._state = LEDBLEState(rgb=self.rgb, power=True)
+        self._fire_callbacks()
 
     @retry_bluetooth_connection_error
     async def turn_off(self) -> None:
         """Turn off."""
         _LOGGER.debug("%s: Turn off", self.name)
         await self._send_command(POWER_OFF_COMAMND)
+        self._state = LEDBLEState(rgb=self.rgb, power=False)
+        self._fire_callbacks()
 
     async def set_brightness(self, brightness: int) -> None:
         """Set the brightness."""
@@ -225,6 +229,8 @@ class LEDBLE:
             rgb_vals = self._calculate_brightness(rgb_vals, brightness)
 
         await self._send_command(b"\x56" + bytes(rgb_vals) + b"\x00\xF0\xAA")
+        self._state = LEDBLEState(rgb=rgb_vals, power=True)
+        self._fire_callbacks()
 
     async def stop(self) -> None:
         """Stop the LEDBLE."""
