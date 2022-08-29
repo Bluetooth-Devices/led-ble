@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.2.1 (2022-08-29)
+### Fix
+* Fix disconnect ([#5](https://github.com/Bluetooth-Devices/led-ble/issues/5)) ([`44f79ee`](https://github.com/Bluetooth-Devices/led-ble/commit/44f79eea35fb027299cda5b6c3fa06da9572f258))
+
 ## v0.2.0 (2022-08-29)
 ### Feature
 * Add example ([#4](https://github.com/Bluetooth-Devices/led-ble/issues/4)) ([`9d25f2a`](https://github.com/Bluetooth-Devices/led-ble/commit/9d25f2a2fd1043cf4679215ce16c0888f9ed6fa8))
