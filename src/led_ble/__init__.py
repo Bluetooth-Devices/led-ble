@@ -365,9 +365,6 @@ class LEDBLE:
 
     def _notification_handler(self, _sender: int, data: bytearray) -> None:
         """Handle notification responses."""
-        _LOGGER.debug(
-            "%s: Notification received; RSSI: %s: %s", self.name, self.rssi, data.hex()
-        )
         model_num = data[1]
         on = data[2] == 0x23
         preset_pattern = data[3]
@@ -379,6 +376,14 @@ class LEDBLE:
         w = data[9]
         self._state = LEDBLEState(
             on, (r, g, b), w, model_num, preset_pattern, mode, speed
+        )
+
+        _LOGGER.debug(
+            "%s: Notification received; RSSI: %s: %s %s",
+            self.name,
+            self.rssi,
+            data.hex(),
+            self._state,
         )
         self._fire_callbacks()
 
