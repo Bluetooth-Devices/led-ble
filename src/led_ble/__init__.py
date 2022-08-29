@@ -244,6 +244,7 @@ class LEDBLE:
                 raise ValueError("Value {} is outside the valid range of 0-255")
         if brightness is not None:
             rgb = self._calculate_brightness(rgb, brightness)
+        _LOGGER.debug("%s: Set rgb after brightness: %s", self.name, rgb)
 
         await self._send_command(b"\x56" + bytes(rgb) + b"\x00\xF0\xAA")
         self._state = LEDBLEState(
