@@ -28,7 +28,7 @@ from led_ble.const import (
 from .exceptions import CharacteristicMissingError
 from .models import LEDBLEState
 
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 
 
 WrapFuncType = TypeVar("WrapFuncType", bound=Callable[..., Any])

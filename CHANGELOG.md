@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.2.2 (2022-08-29)
+### Fix
+* Remove scaling ([#6](https://github.com/Bluetooth-Devices/led-ble/issues/6)) ([`89ac78e`](https://github.com/Bluetooth-Devices/led-ble/commit/89ac78e5e41e4c5123cb8ef39505ca6bb9c5e24e))
+
 ## v0.2.1 (2022-08-29)
 ### Fix
 * Fix disconnect ([#5](https://github.com/Bluetooth-Devices/led-ble/issues/5)) ([`44f79ee`](https://github.com/Bluetooth-Devices/led-ble/commit/44f79eea35fb027299cda5b6c3fa06da9572f258))
