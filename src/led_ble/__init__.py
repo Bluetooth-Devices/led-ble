@@ -49,19 +49,6 @@ _LOGGER = logging.getLogger(__name__)
 DEFAULT_ATTEMPTS = 3
 
 
-def operation_lock(func: WrapFuncType) -> WrapFuncType:
-    """Define a wrapper to only allow a single operation at a time."""
-
-    async def _async_wrap_operation_lock(
-        self: "LEDBLE", *args: Any, **kwargs: Any
-    ) -> None:
-        _LOGGER.debug("%s: Acquiring lock", self.name)
-        async with self._operation_lock:
-            return await func(self, *args, **kwargs)
-
-    return cast(WrapFuncType, _async_wrap_operation_lock)
-
-
 def retry_bluetooth_connection_error(func: WrapFuncType) -> WrapFuncType:
     """Define a wrapper to retry on bleak error.
 
@@ -198,21 +185,18 @@ class LEDBLE:
         _, _, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
         return int(v * 255)
 
-    @operation_lock
     @retry_bluetooth_connection_error
     async def update(self) -> None:
         """Update the LEDBLE."""
         _LOGGER.debug("%s: Updating", self.name)
         await self._send_command(STATE_COMMAND)
 
-    @operation_lock
     @retry_bluetooth_connection_error
     async def turn_on(self) -> None:
         """Turn on."""
         _LOGGER.debug("%s: Turn on", self.name)
         await self._send_command(POWER_ON_COMMAND)
 
-    @operation_lock
     @retry_bluetooth_connection_error
     async def turn_off(self) -> None:
         """Turn off."""
@@ -224,7 +208,6 @@ class LEDBLE:
         _LOGGER.debug("%s: Set brightness: %s", self.name, brightness)
         await self.set_rgb(self.rgb_unscaled, brightness)
 
-    @operation_lock
     @retry_bluetooth_connection_error
     async def set_rgb(
         self, rgb: tuple[int, int, int], brightness: int | None = None
