@@ -4,6 +4,6 @@ __version__ = "0.5.1"
 
 
 from .exceptions import CharacteristicMissingError
-from .led_ble import LEDBLE, LEDBLEState
+from .led_ble import BLEAK_EXCEPTIONS, LEDBLE, LEDBLEState
 
-__all__ = ["CharacteristicMissingError", "LEDBLE", "LEDBLEState"]
+__all__ = ["BLEAK_EXCEPTIONS", "CharacteristicMissingError", "LEDBLE", "LEDBLEState"]
