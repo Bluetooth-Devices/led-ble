@@ -241,6 +241,10 @@ class LEDBLE:
 
         await self._send_command(b"\x56" + bytes(rgb_vals) + b"\x00\xF0\xAA")
 
+    async def stop(self) -> None:
+        """Stop the LEDBLE."""
+        await self._execute_disconnect()
+
     def _calculate_brightness(
         self, rgb: tuple[int, int, int], level: int
     ) -> tuple[int, int, int]:
@@ -363,6 +367,7 @@ class LEDBLE:
             self._read_char = None
             self._write_char = None
             if client and client.is_connected:
+                await client.stop_notify(self._read_char)
                 await client.disconnect()
 
     async def _send_command_locked(self, command: bytes) -> None:
