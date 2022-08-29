@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.4.0 (2022-08-29)
+### Feature
+* Add model data ([#8](https://github.com/Bluetooth-Devices/led-ble/issues/8)) ([`6df04cf`](https://github.com/Bluetooth-Devices/led-ble/commit/6df04cf9d0dfeaf6836830634df8df1a2bcbeb95))
+
 ## v0.3.0 (2022-08-29)
 ### Feature
 * Add white channel ([#7](https://github.com/Bluetooth-Devices/led-ble/issues/7)) ([`3112249`](https://github.com/Bluetooth-Devices/led-ble/commit/31122499beb71f7af68ad5854fb58f112803c654))
