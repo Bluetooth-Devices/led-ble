@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.0 (2022-08-29)
+### Feature
+* Add white channel ([#7](https://github.com/Bluetooth-Devices/led-ble/issues/7)) ([`3112249`](https://github.com/Bluetooth-Devices/led-ble/commit/31122499beb71f7af68ad5854fb58f112803c654))
+
 ## v0.2.2 (2022-08-29)
 ### Fix
 * Remove scaling ([#6](https://github.com/Bluetooth-Devices/led-ble/issues/6)) ([`89ac78e`](https://github.com/Bluetooth-Devices/led-ble/commit/89ac78e5e41e4c5123cb8ef39505ca6bb9c5e24e))
