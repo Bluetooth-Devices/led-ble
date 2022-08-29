@@ -232,7 +232,7 @@ class LEDBLE:
         _LOGGER.debug("%s: Set rgb after brightness: %s", self.name, rgb)
 
         await self._send_command(b"\x56" + bytes(rgb) + b"\x00\xF0\xAA")
-        self._state = replace(self._state, rgb=rgb, brightness=brightness)
+        self._state = replace(self._state, rgb=rgb)
         self._fire_callbacks()
 
     @retry_bluetooth_connection_error
@@ -252,7 +252,6 @@ class LEDBLE:
             self._state,
             rgb=(rgbw[0], rgbw[1], rgbw[2]),
             w=rgbw[3],
-            brightness=brightness,
         )
         self._fire_callbacks()
 
@@ -265,9 +264,7 @@ class LEDBLE:
         await self._send_command(
             b"\x56\x00\x00\x00" + bytes([brightness]) + b"\x0F\xAA"
         )
-        self._state = replace(
-            self._state, rgb=(0, 0, 0), w=brightness, brightness=brightness
-        )
+        self._state = replace(self._state, rgb=(0, 0, 0), w=brightness)
         self._fire_callbacks()
 
     async def stop(self) -> None:
