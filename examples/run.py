@@ -43,8 +43,6 @@ async def run() -> None:
     await asyncio.sleep(1)
     await led.turn_off()
     await led.update()
-
-    await asyncio.sleep(1000000)
     cancel_callback()
     await scanner.stop()
 
