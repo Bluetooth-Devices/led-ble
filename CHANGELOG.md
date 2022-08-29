@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.4.1 (2022-08-29)
+### Fix
+* Add state to log ([#9](https://github.com/Bluetooth-Devices/led-ble/issues/9)) ([`ee85bdd`](https://github.com/Bluetooth-Devices/led-ble/commit/ee85bddec3b5dac4de1aa38742662ccf97fc0fda))
+
 ## v0.4.0 (2022-08-29)
 ### Feature
 * Add model data ([#8](https://github.com/Bluetooth-Devices/led-ble/issues/8)) ([`6df04cf`](https://github.com/Bluetooth-Devices/led-ble/commit/6df04cf9d0dfeaf6836830634df8df1a2bcbeb95))
