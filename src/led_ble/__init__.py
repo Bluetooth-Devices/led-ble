@@ -353,13 +353,14 @@ class LEDBLE:
     async def _execute_disconnect(self) -> None:
         """Execute disconnection."""
         async with self._connect_lock:
+            read_char = self._read_char
             client = self._client
             self._expected_disconnect = True
             self._client = None
             self._read_char = None
             self._write_char = None
             if client and client.is_connected:
-                await client.stop_notify(self._read_char)
+                await client.stop_notify(read_char)
                 await client.disconnect()
 
     async def _send_command_locked(self, command: bytes) -> None:
