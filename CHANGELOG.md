@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.0 (2022-09-04)
+### Feature
+* Add support for more protocols ([#16](https://github.com/Bluetooth-Devices/led-ble/issues/16)) ([`c7bbb15`](https://github.com/Bluetooth-Devices/led-ble/commit/c7bbb15ec2dd291f5918850b3bdddec8cf1abae6))
+
 ## v0.5.4 (2022-08-29)
 ### Fix
 * W channel not being cleared on rgb set ([#15](https://github.com/Bluetooth-Devices/led-ble/issues/15)) ([`048bdff`](https://github.com/Bluetooth-Devices/led-ble/commit/048bdffd52ea78ba66a1d33793db58a725bc894b))
