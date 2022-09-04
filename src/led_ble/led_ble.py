@@ -7,6 +7,7 @@ from collections.abc import Callable
 from dataclasses import replace
 from typing import Any, TypeVar, cast
 
+import async_timeout
 from bleak.backends.device import BLEDevice
 from bleak.backends.service import BleakGATTCharacteristic, BleakGATTServiceCollection
 from bleak.exc import BleakDBusError
@@ -17,17 +18,21 @@ from bleak_retry_connector import (
     ble_device_has_changed,
     establish_connection,
 )
+from flux_led.base_device import PROTOCOL_NAME_TO_CLS, PROTOCOL_TYPES
+from flux_led.const import LevelWriteMode
+from flux_led.pattern import EFFECT_ID_NAME, EFFECT_LIST, PresetPattern
+from flux_led.utils import rgbw_brightness
+
+from led_ble.model_db import LEDBLEModel
 
 from .const import (
     POSSIBLE_READ_CHARACTERISTIC_UUIDS,
     POSSIBLE_WRITE_CHARACTERISTIC_UUIDS,
-    POWER_OFF_COMAMND,
-    POWER_ON_COMMAND,
     STATE_COMMAND,
 )
 from .exceptions import CharacteristicMissingError
+from .model_db import get_model
 from .models import LEDBLEState
-from .util import rgbw_brightness
 
 __version__ = "0.5.0"
 
@@ -136,6 +141,9 @@ class LEDBLE:
         self._expected_disconnect = False
         self.loop = asyncio.get_running_loop()
         self._callbacks: list[Callable[[LEDBLEState], None]] = []
+        self._model_data: LEDBLEModel | None = None
+        self._protocol: PROTOCOL_TYPES | None = None
+        self._resolve_protocol_event = asyncio.Event()
 
     def set_ble_device(self, ble_device: BLEDevice) -> None:
         """Set the ble device."""
@@ -146,6 +154,12 @@ class LEDBLE:
             self._cached_services = None
         self._ble_device = ble_device
         self._address = ble_device.address
+
+    @property
+    def model_data(self) -> LEDBLEModel:
+        """Return the model data."""
+        assert self._model_data is not None  # nosec
+        return self._model_data
 
     @property
     def name(self) -> str:
@@ -194,14 +208,19 @@ class LEDBLE:
     @retry_bluetooth_connection_error
     async def update(self) -> None:
         """Update the LEDBLE."""
+        await self._ensure_connected()
+        await self._resolve_protocol()
         _LOGGER.debug("%s: Updating", self.name)
-        await self._send_command(STATE_COMMAND)
+        assert self._protocol is not None  # nosec
+        command = self._protocol.construct_state_query()
+        await self._send_command([command])
 
     @retry_bluetooth_connection_error
     async def turn_on(self) -> None:
         """Turn on."""
         _LOGGER.debug("%s: Turn on", self.name)
-        await self._send_command(POWER_ON_COMMAND)
+        assert self._protocol is not None  # nosec
+        await self._send_command(self._protocol.construct_state_change(True))
         self._state = replace(self._state, power=True)
         self._fire_callbacks()
 
@@ -209,7 +228,8 @@ class LEDBLE:
     async def turn_off(self) -> None:
         """Turn off."""
         _LOGGER.debug("%s: Turn off", self.name)
-        await self._send_command(POWER_OFF_COMAMND)
+        assert self._protocol is not None  # nosec
+        await self._send_command(self._protocol.construct_state_change(False))
         self._state = replace(self._state, power=False)
         self._fire_callbacks()
 
@@ -230,8 +250,12 @@ class LEDBLE:
         if brightness is not None:
             rgb = self._calculate_brightness(rgb, brightness)
         _LOGGER.debug("%s: Set rgb after brightness: %s", self.name, rgb)
+        assert self._protocol is not None  # nosec
 
-        await self._send_command(b"\x56" + bytes(rgb) + b"\x00\xF0\xAA")
+        command = self._protocol.construct_levels_change(
+            True, *rgb, None, None, LevelWriteMode.COLORS
+        )
+        await self._send_command(command)
         self._state = replace(self._state, rgb=rgb, w=0)
         self._fire_callbacks()
 
@@ -246,8 +270,13 @@ class LEDBLE:
                 raise ValueError("Value {} is outside the valid range of 0-255")
         rgbw = rgbw_brightness(rgbw, brightness)
         _LOGGER.debug("%s: Set rgbw after brightness: %s", self.name, rgbw)
+        assert self._protocol is not None  # nosec
 
-        await self._send_command(b"\x56" + bytes(rgbw) + b"\x00\xAA")
+        command = self._protocol.construct_levels_change(
+            True, *rgbw, None, None, LevelWriteMode.ALL
+        )
+        await self._send_command(command)
+
         self._state = replace(
             self._state,
             rgb=(rgbw[0], rgbw[1], rgbw[2]),
@@ -261,11 +290,41 @@ class LEDBLE:
         _LOGGER.debug("%s: Set white: %s", self.name, brightness)
         if not 0 <= brightness <= 255:
             raise ValueError("Value {} is outside the valid range of 0-255")
-        await self._send_command(
-            b"\x56\x00\x00\x00" + bytes([brightness]) + b"\x0F\xAA"
+        assert self._protocol is not None  # nosec
+
+        command = self._protocol.construct_levels_change(
+            True, 0, 0, 0, brightness, None, LevelWriteMode.WHITES
         )
+        await self._send_command(command)
         self._state = replace(self._state, rgb=(0, 0, 0), w=brightness)
         self._fire_callbacks()
+
+    def _generate_preset_pattern(
+        self, pattern: int, speed: int, brightness: int
+    ) -> bytearray:
+        """Generate the preset pattern protocol bytes."""
+        PresetPattern.valid_or_raise(pattern)
+        if not (1 <= brightness <= 100):
+            raise ValueError("Brightness must be between 1 and 100")
+        assert self._protocol is not None  # nosec
+        return self._protocol.construct_preset_pattern(pattern, speed, brightness)
+
+    async def async_set_preset_pattern(
+        self, effect: int, speed: int, brightness: int = 100
+    ) -> None:
+        """Set a preset pattern on the device."""
+        command = self._generate_preset_pattern(effect, speed, brightness)
+        await self._send_command(command)
+        self._state = replace(self._state, preset_pattern=effect)
+        self._fire_callbacks()
+
+    async def async_set_effect(
+        self, effect: str, speed: int, brightness: int = 100
+    ) -> None:
+        """Set an effect."""
+        await self.async_set_preset_pattern(
+            self._effect_to_pattern(effect), speed, brightness
+        )
 
     async def stop(self) -> None:
         """Stop the LEDBLE."""
@@ -333,6 +392,8 @@ class LEDBLE:
                 "%s: Subscribe to notifications; RSSI: %s", self.name, self.rssi
             )
             await client.start_notify(self._read_char, self._notification_handler)
+            if not self._protocol:
+                await self._resolve_protocol()
 
     @property
     def model_num(self) -> int:
@@ -345,7 +406,7 @@ class LEDBLE:
         return self._state.version_num
 
     @property
-    def preset_pattern(self) -> int:
+    def preset_pattern_num(self) -> int:
         """Return the preset_pattern."""
         return self._state.preset_pattern
 
@@ -358,6 +419,25 @@ class LEDBLE:
     def speed(self) -> int:
         """Return the speed."""
         return self._state.speed
+
+    def _effect_to_pattern(self, effect: str) -> int:
+        """Convert an effect to a pattern code."""
+        return PresetPattern.str_to_val(effect)
+
+    @property
+    def effect_list(self) -> list[str]:
+        """Return the list of available effects."""
+        return EFFECT_LIST
+
+    @property
+    def effect(self) -> str | None:
+        """Return the current effect."""
+        return self._named_effect
+
+    @property
+    def _named_effect(self) -> str | None:
+        """Returns the named effect."""
+        return EFFECT_ID_NAME.get(self.preset_pattern_num)
 
     def _notification_handler(self, _sender: int, data: bytearray) -> None:
         """Handle notification responses."""
@@ -382,6 +462,12 @@ class LEDBLE:
             data.hex(),
             self._state,
         )
+
+        if not self._resolve_protocol_event.is_set():
+            self._resolve_protocol_event.set()
+            self._model_data = get_model(model_num)
+            self._set_protocol(self._model_data.protocol_for_version_num(version))
+
         self._fire_callbacks()
 
     def _reset_disconnect_timer(self) -> None:
@@ -433,10 +519,10 @@ class LEDBLE:
                 await client.stop_notify(read_char)
                 await client.disconnect()
 
-    async def _send_command_locked(self, command: bytes) -> None:
+    async def _send_command_locked(self, commands: list[bytes]) -> None:
         """Send command to device and read response."""
         try:
-            await self._execute_command_locked(command)
+            await self._execute_command_locked(commands)
         except BleakDBusError as ex:
             # Disconnect so we can reset state and try again
             await asyncio.sleep(0.25)
@@ -457,12 +543,27 @@ class LEDBLE:
             await self._execute_disconnect()
             raise
 
-    async def _send_command(self, command: bytes, retry: int | None = None) -> None:
+    async def _send_command(
+        self, commands: list[bytes] | bytes, retry: int | None = None
+    ) -> None:
         """Send command to device and read response."""
         await self._ensure_connected()
+        await self._resolve_protocol()
+        if not isinstance(commands, list):
+            commands = [commands]
+        await self._send_command_while_connected(commands, retry)
+
+    async def _send_command_while_connected(
+        self, commands: list[bytes], retry: int | None = None
+    ) -> None:
+        """Send command to device and read response."""
         if retry is None:
             retry = self._retry_count
-        _LOGGER.debug("%s: Sending command %s", self.name, command)
+        _LOGGER.debug(
+            "%s: Sending commands %s",
+            self.name,
+            [command.hex() for command in commands],
+        )
         max_attempts = retry + 1
         if self._operation_lock.locked():
             _LOGGER.debug(
@@ -473,7 +574,7 @@ class LEDBLE:
         async with self._operation_lock:
             for attempt in range(max_attempts):
                 try:
-                    await self._send_command_locked(command)
+                    await self._send_command_locked(commands)
                     return
                 except BleakNotFoundError:
                     _LOGGER.error(
@@ -517,14 +618,15 @@ class LEDBLE:
 
         raise RuntimeError("Unreachable")
 
-    async def _execute_command_locked(self, command: bytes) -> None:
+    async def _execute_command_locked(self, commands: list[bytes]) -> None:
         """Execute command and read response."""
         assert self._client is not None  # nosec
         if not self._read_char:
             raise CharacteristicMissingError("Read characteristic missing")
         if not self._write_char:
             raise CharacteristicMissingError("Write characteristic missing")
-        await self._client.write_gatt_char(self._write_char, command, False)
+        for command in commands:
+            await self._client.write_gatt_char(self._write_char, command, False)
 
     def _resolve_characteristics(self, services: BleakGATTServiceCollection) -> bool:
         """Resolve characteristics."""
@@ -537,3 +639,17 @@ class LEDBLE:
                 self._write_char = char
                 break
         return bool(self._read_char and self._write_char)
+
+    async def _resolve_protocol(self) -> None:
+        """Resolve protocol."""
+        if self._resolve_protocol_event.is_set():
+            return
+        await self._send_command_while_connected([STATE_COMMAND])
+        async with async_timeout.timeout(10):
+            await self._resolve_protocol_event.wait()
+
+    def _set_protocol(self, protocol: str) -> None:
+        cls = PROTOCOL_NAME_TO_CLS.get(protocol)
+        if cls is None:
+            raise ValueError(f"Invalid protocol: {protocol}")
+        self._protocol = cls()
