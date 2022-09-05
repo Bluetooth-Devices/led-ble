@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.7.0 (2022-09-05)
+### Feature
+* Add newly discovered model 0x15 ([#17](https://github.com/Bluetooth-Devices/led-ble/issues/17)) ([`3c5f15c`](https://github.com/Bluetooth-Devices/led-ble/commit/3c5f15c80520b76fe6fa9e0933f64c3419cd3b07))
+
 ## v0.6.0 (2022-09-04)
 ### Feature
 * Add support for more protocols ([#16](https://github.com/Bluetooth-Devices/led-ble/issues/16)) ([`c7bbb15`](https://github.com/Bluetooth-Devices/led-ble/commit/c7bbb15ec2dd291f5918850b3bdddec8cf1abae6))
