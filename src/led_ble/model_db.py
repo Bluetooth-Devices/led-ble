@@ -51,6 +51,15 @@ MODELS = [
         color_modes=COLOR_MODES_RGB_W,  # Formerly rgbwcapable
     ),
     LEDBLEModel(
+        model_num=0x15,
+        models=["LEDBlue-C2AF4BD5"],
+        description="Bulb RGB/W",
+        protocols=[
+            MinVersionProtocol(0, PROTOCOL_LEDENET_ORIGINAL_RGBW),
+        ],
+        color_modes=COLOR_MODES_RGB_W,  # Formerly rgbwcapable
+    ),
+    LEDBLEModel(
         model_num=0xE3,
         models=["QHM-095F"],
         description="Controller RGB/W",
