@@ -60,6 +60,15 @@ MODELS = [
         color_modes=COLOR_MODES_RGB_W,  # Formerly rgbwcapable
     ),
     LEDBLEModel(
+        model_num=0x54,
+        models=["LEDBLE-DE1254F9"],
+        description="Controller RGB&W",
+        protocols=[
+            MinVersionProtocol(0, PROTOCOL_LEDENET_ORIGINAL_RGBW),
+        ],
+        color_modes=COLOR_MODES_RGB_W,  # Formerly rgbwcapable
+    ),
+    LEDBLEModel(
         model_num=0xE3,
         models=["QHM-095F"],
         description="Controller RGB/W",
