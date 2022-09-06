@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.7.1 (2022-09-06)
+### Fix
+* Effects on dream models ([#20](https://github.com/Bluetooth-Devices/led-ble/issues/20)) ([`b8126c1`](https://github.com/Bluetooth-Devices/led-ble/commit/b8126c1f5fe098efcc8c3d3a43a42ed5cc9136d8))
+
 ## v0.7.0 (2022-09-05)
 ### Feature
 * Add newly discovered model 0x15 ([#17](https://github.com/Bluetooth-Devices/led-ble/issues/17)) ([`3c5f15c`](https://github.com/Bluetooth-Devices/led-ble/commit/3c5f15c80520b76fe6fa9e0933f64c3419cd3b07))
