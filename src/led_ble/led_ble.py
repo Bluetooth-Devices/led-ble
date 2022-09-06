@@ -53,6 +53,9 @@ _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_ATTEMPTS = 3
 
+DREAM_EFFECTS = {f"Effect {i+1}": i for i in range(0, 255)}
+DREAM_EFFECT_LIST = list(DREAM_EFFECTS)
+
 
 def retry_bluetooth_connection_error(func: WrapFuncType) -> WrapFuncType:
     """Define a wrapper to retry on bleak error.
@@ -236,6 +239,14 @@ class LEDBLE:
     async def set_brightness(self, brightness: int) -> None:
         """Set the brightness."""
         _LOGGER.debug("%s: Set brightness: %s", self.name, brightness)
+        effect = self.effect
+        if effect:
+            effect_brightness = round(brightness / 255 * 100)
+            await self.async_set_effect(effect, self.speed, effect_brightness)
+            return
+        if self.w:
+            await self.set_white(brightness)
+            return
         await self.set_rgb(self.rgb_unscaled, brightness)
 
     @retry_bluetooth_connection_error
@@ -256,7 +267,12 @@ class LEDBLE:
             True, *rgb, None, None, LevelWriteMode.COLORS
         )
         await self._send_command(command)
-        self._state = replace(self._state, rgb=rgb, w=0)
+        self._state = replace(
+            self._state,
+            rgb=rgb,
+            w=0,
+            preset_pattern=1 if self.dream else self.preset_pattern_num,
+        )
         self._fire_callbacks()
 
     @retry_bluetooth_connection_error
@@ -281,6 +297,7 @@ class LEDBLE:
             self._state,
             rgb=(rgbw[0], rgbw[1], rgbw[2]),
             w=rgbw[3],
+            preset_pattern=1 if self.dream else self.preset_pattern_num,
         )
         self._fire_callbacks()
 
@@ -296,13 +313,23 @@ class LEDBLE:
             True, 0, 0, 0, brightness, None, LevelWriteMode.WHITES
         )
         await self._send_command(command)
-        self._state = replace(self._state, rgb=(0, 0, 0), w=brightness)
+        self._state = replace(
+            self._state,
+            rgb=(0, 0, 0),
+            w=brightness,
+            preset_pattern=1 if self.dream else self.preset_pattern_num,
+        )
         self._fire_callbacks()
 
     def _generate_preset_pattern(
         self, pattern: int, speed: int, brightness: int
     ) -> bytearray:
         """Generate the preset pattern protocol bytes."""
+        if self.dream:
+            # TODO: move this to the protocol
+            brightness = int(brightness * 255 / 100)
+            speed = int(speed * 255 / 100)
+            return bytearray([0x9E, 0x00, pattern, speed, brightness, 0x00, 0xE9])
         PresetPattern.valid_or_raise(pattern)
         if not (1 <= brightness <= 100):
             raise ValueError("Brightness must be between 1 and 100")
@@ -315,7 +342,10 @@ class LEDBLE:
         """Set a preset pattern on the device."""
         command = self._generate_preset_pattern(effect, speed, brightness)
         await self._send_command(command)
-        self._state = replace(self._state, preset_pattern=effect)
+        if self.dream:
+            self._state = replace(self._state, preset_pattern=0, mode=effect)
+        else:
+            self._state = replace(self._state, preset_pattern=effect)
         self._fire_callbacks()
 
     async def async_set_effect(
@@ -422,16 +452,29 @@ class LEDBLE:
 
     def _effect_to_pattern(self, effect: str) -> int:
         """Convert an effect to a pattern code."""
+        if self.dream:
+            if effect not in DREAM_EFFECTS:
+                raise ValueError(f"Effect {effect} is not valid")
+            return DREAM_EFFECTS[effect]
         return PresetPattern.str_to_val(effect)
 
     @property
     def effect_list(self) -> list[str]:
         """Return the list of available effects."""
+        if self.dream:
+            return DREAM_EFFECT_LIST
         return EFFECT_LIST
+
+    @property
+    def dream(self) -> bool:
+        """Return if the device is a dream."""
+        return self.model_num in (0x10,)
 
     @property
     def effect(self) -> str | None:
         """Return the current effect."""
+        if self.dream and self.preset_pattern_num == 0:
+            return f"Effect {self.mode+1}"
         return self._named_effect
 
     @property
@@ -441,6 +484,14 @@ class LEDBLE:
 
     def _notification_handler(self, _sender: int, data: bytearray) -> None:
         """Handle notification responses."""
+        _LOGGER.debug("%s: Notification received: %s", self.name, data.hex())
+
+        if len(data) == 4 and data[0] == 0xCC:
+            on = data[1] == 0x23
+            self._state = replace(self._state, power=on)
+            return
+        if len(data) < 11:
+            return
         model_num = data[1]
         on = data[2] == 0x23
         preset_pattern = data[3]
