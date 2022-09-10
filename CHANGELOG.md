@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.8.0 (2022-09-10)
+### Feature
+* Export get_device from bleak-retry-connector ([#21](https://github.com/Bluetooth-Devices/led-ble/issues/21)) ([`5f41511`](https://github.com/Bluetooth-Devices/led-ble/commit/5f41511cd1684eb9277fc63896da63d50127b168))
+
 ## v0.7.1 (2022-09-06)
 ### Fix
 * Effects on dream models ([#20](https://github.com/Bluetooth-Devices/led-ble/issues/20)) ([`b8126c1`](https://github.com/Bluetooth-Devices/led-ble/commit/b8126c1f5fe098efcc8c3d3a43a42ed5cc9136d8))
