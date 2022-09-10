@@ -156,7 +156,16 @@ class LEDBLE:
             )
             self._cached_services = None
         self._ble_device = ble_device
-        self._address = ble_device.address
+
+    @property
+    def address(self) -> str:
+        """Return the address."""
+        return self._ble_device.address
+
+    @property
+    def _address(self) -> str:
+        """Return the address."""
+        return self._ble_device.address
 
     @property
     def model_data(self) -> LEDBLEModel:
