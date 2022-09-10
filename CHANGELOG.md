@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.8.1 (2022-09-10)
+### Fix
+* Bump bleak-retry-connector min version ([#22](https://github.com/Bluetooth-Devices/led-ble/issues/22)) ([`2112b18`](https://github.com/Bluetooth-Devices/led-ble/commit/2112b18c4a7afbb5ea04a6d8c5ddb2f8232816da))
+
 ## v0.8.0 (2022-09-10)
 ### Feature
 * Export get_device from bleak-retry-connector ([#21](https://github.com/Bluetooth-Devices/led-ble/issues/21)) ([`5f41511`](https://github.com/Bluetooth-Devices/led-ble/commit/5f41511cd1684eb9277fc63896da63d50127b168))
