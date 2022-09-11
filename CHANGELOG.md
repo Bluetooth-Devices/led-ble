@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.9.1 (2022-09-11)
+### Fix
+* Typo in bleak-retry-connector min version pin ([#28](https://github.com/Bluetooth-Devices/led-ble/issues/28)) ([`8638ab8`](https://github.com/Bluetooth-Devices/led-ble/commit/8638ab86a73fae3a8407b4b6b3f9fe3c4193bfb0))
+
 ## v0.9.0 (2022-09-11)
 ### Feature
 * Implement smart backoff via bleak-retry-connector ([#27](https://github.com/Bluetooth-Devices/led-ble/issues/27)) ([`a7bb1b1`](https://github.com/Bluetooth-Devices/led-ble/commit/a7bb1b1707c103010398091d5291d8827b730d7e))
