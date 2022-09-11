@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.8.4 (2022-09-11)
+### Fix
+* Bump bleak-retry-connector ([#25](https://github.com/Bluetooth-Devices/led-ble/issues/25)) ([`0ad8e7b`](https://github.com/Bluetooth-Devices/led-ble/commit/0ad8e7bc240bcd9abfffb7efccef93186072c25c))
+
 ## v0.8.3 (2022-09-10)
 ### Fix
 * Address property ([#24](https://github.com/Bluetooth-Devices/led-ble/issues/24)) ([`b85439f`](https://github.com/Bluetooth-Devices/led-ble/commit/b85439febb7fbcfb9fa7e41a7a6f6991bd25dff4))
