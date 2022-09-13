@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.10.0 (2022-09-13)
+### Feature
+* Update for bleak 0.17 support ([#29](https://github.com/Bluetooth-Devices/led-ble/issues/29)) ([`530de76`](https://github.com/Bluetooth-Devices/led-ble/commit/530de767892a51bb93a81830f418b168b3f13fd8))
+
 ## v0.9.1 (2022-09-11)
 ### Fix
 * Typo in bleak-retry-connector min version pin ([#28](https://github.com/Bluetooth-Devices/led-ble/issues/28)) ([`8638ab8`](https://github.com/Bluetooth-Devices/led-ble/commit/8638ab86a73fae3a8407b4b6b3f9fe3c4193bfb0))
