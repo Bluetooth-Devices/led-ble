@@ -11,6 +11,7 @@ import async_timeout
 from bleak.backends.device import BLEDevice
 from bleak.backends.service import BleakGATTCharacteristic, BleakGATTServiceCollection
 from bleak.exc import BleakDBusError
+from bleak_retry_connector import BLEAK_RETRY_EXCEPTIONS as BLEAK_EXCEPTIONS
 from bleak_retry_connector import (
     BleakClientWithServiceCache,
     BleakError,
@@ -34,6 +35,8 @@ from .exceptions import CharacteristicMissingError
 from .model_db import get_model
 from .models import LEDBLEState
 
+BLEAK_BACKOFF_TIME = 0.25
+
 __version__ = "0.5.0"
 
 
@@ -42,13 +45,7 @@ WrapFuncType = TypeVar("WrapFuncType", bound=Callable[..., Any])
 DISCONNECT_DELAY = 120
 
 RETRY_BACKOFF_EXCEPTIONS = (BleakDBusError,)
-BLEAK_EXCEPTIONS = (AttributeError, BleakError, asyncio.exceptions.TimeoutError)
 
-RETRY_EXCEPTIONS = (
-    asyncio.TimeoutError,
-    BleakError,
-    EOFError,
-)
 _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_ATTEMPTS = 3
@@ -95,31 +92,33 @@ def retry_bluetooth_connection_error(func: WrapFuncType) -> WrapFuncType:
                     self.name,
                     type(err),
                     func,
-                    0.25,
+                    BLEAK_BACKOFF_TIME,
                     attempt,
                     max_attempts,
                     exc_info=True,
                 )
-                await asyncio.sleep(0.25)
-            except RETRY_EXCEPTIONS as err:
+                await asyncio.sleep(BLEAK_BACKOFF_TIME)
+            except BLEAK_EXCEPTIONS as err:
                 if attempt >= max_attempts:
                     _LOGGER.debug(
-                        "%s: %s error calling %s, reach max attempts (%s/%s)",
+                        "%s: %s error calling %s, reach max attempts (%s/%s): %s",
                         self.name,
                         type(err),
                         func,
                         attempt,
                         max_attempts,
+                        err,
                         exc_info=True,
                     )
                     raise
                 _LOGGER.debug(
-                    "%s: %s error calling %s, retrying  (%s/%s)...",
+                    "%s: %s error calling %s, retrying  (%s/%s)...: %s",
                     self.name,
                     type(err),
                     func,
                     attempt,
                     max_attempts,
+                    err,
                     exc_info=True,
                 )
 
@@ -585,12 +584,12 @@ class LEDBLE:
             await self._execute_command_locked(commands)
         except BleakDBusError as ex:
             # Disconnect so we can reset state and try again
-            await asyncio.sleep(0.25)
+            await asyncio.sleep(BLEAK_BACKOFF_TIME)
             _LOGGER.debug(
                 "%s: RSSI: %s; Backing off %ss; Disconnecting due to error: %s",
                 self.name,
                 self.rssi,
-                0.25,
+                BLEAK_BACKOFF_TIME,
                 ex,
             )
             await self._execute_disconnect()
@@ -662,12 +661,13 @@ class LEDBLE:
                         self.rssi,
                         exc_info=True,
                     )
-                except BLEAK_EXCEPTIONS:
+                except BLEAK_EXCEPTIONS as ex:
                     if attempt == retry:
                         _LOGGER.error(
-                            "%s: communication failed; Stopping trying; RSSI: %s",
+                            "%s: communication failed; Stopping trying; RSSI: %s: %s",
                             self.name,
                             self.rssi,
+                            ex,
                             exc_info=True,
                         )
                         return None
