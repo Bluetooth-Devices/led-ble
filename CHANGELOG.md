@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.10.1 (2022-09-15)
+### Fix
+* Handle additional bleak exceptions ([#31](https://github.com/Bluetooth-Devices/led-ble/issues/31)) ([`1ff94f7`](https://github.com/Bluetooth-Devices/led-ble/commit/1ff94f770e86d630892261178018d861d4e74a72))
+
 ## v0.10.0 (2022-09-13)
 ### Feature
 * Update for bleak 0.17 support ([#29](https://github.com/Bluetooth-Devices/led-ble/issues/29)) ([`530de76`](https://github.com/Bluetooth-Devices/led-ble/commit/530de767892a51bb93a81830f418b168b3f13fd8))
