@@ -5,10 +5,11 @@ import colorsys
 import logging
 from collections.abc import Callable
 from dataclasses import replace
-from typing import Any, TypeVar, cast
+from typing import Any, TypeVar
 
 import async_timeout
 from bleak.backends.device import BLEDevice
+from bleak.backends.scanner import AdvertisementData
 from bleak.backends.service import BleakGATTCharacteristic, BleakGATTServiceCollection
 from bleak.exc import BleakDBusError
 from bleak_retry_connector import BLEAK_RETRY_EXCEPTIONS as BLEAK_EXCEPTIONS
@@ -16,8 +17,8 @@ from bleak_retry_connector import (
     BleakClientWithServiceCache,
     BleakError,
     BleakNotFoundError,
-    ble_device_has_changed,
     establish_connection,
+    retry_bluetooth_connection_error,
 )
 from flux_led.base_device import PROTOCOL_NAME_TO_CLS, PROTOCOL_TYPES
 from flux_led.const import LevelWriteMode
@@ -54,91 +55,19 @@ DREAM_EFFECTS = {f"Effect {i+1}": i for i in range(0, 255)}
 DREAM_EFFECT_LIST = list(DREAM_EFFECTS)
 
 
-def retry_bluetooth_connection_error(func: WrapFuncType) -> WrapFuncType:
-    """Define a wrapper to retry on bleak error.
-
-    The accessory is allowed to disconnect us any time so
-    we need to retry the operation.
-    """
-
-    async def _async_wrap_retry_bluetooth_connection_error(
-        self: "LEDBLE", *args: Any, **kwargs: Any
-    ) -> Any:
-        _LOGGER.debug("%s: Starting retry loop", self.name)
-        attempts = DEFAULT_ATTEMPTS
-        max_attempts = attempts - 1
-
-        for attempt in range(attempts):
-            try:
-                return await func(self, *args, **kwargs)
-            except BleakNotFoundError:
-                # The lock cannot be found so there is no
-                # point in retrying.
-                raise
-            except RETRY_BACKOFF_EXCEPTIONS as err:
-                if attempt >= max_attempts:
-                    _LOGGER.debug(
-                        "%s: %s error calling %s, reach max attempts (%s/%s)",
-                        self.name,
-                        type(err),
-                        func,
-                        attempt,
-                        max_attempts,
-                        exc_info=True,
-                    )
-                    raise
-                _LOGGER.debug(
-                    "%s: %s error calling %s, backing off %ss, retrying (%s/%s)...",
-                    self.name,
-                    type(err),
-                    func,
-                    BLEAK_BACKOFF_TIME,
-                    attempt,
-                    max_attempts,
-                    exc_info=True,
-                )
-                await asyncio.sleep(BLEAK_BACKOFF_TIME)
-            except BLEAK_EXCEPTIONS as err:
-                if attempt >= max_attempts:
-                    _LOGGER.debug(
-                        "%s: %s error calling %s, reach max attempts (%s/%s): %s",
-                        self.name,
-                        type(err),
-                        func,
-                        attempt,
-                        max_attempts,
-                        err,
-                        exc_info=True,
-                    )
-                    raise
-                _LOGGER.debug(
-                    "%s: %s error calling %s, retrying  (%s/%s)...: %s",
-                    self.name,
-                    type(err),
-                    func,
-                    attempt,
-                    max_attempts,
-                    err,
-                    exc_info=True,
-                )
-
-    return cast(WrapFuncType, _async_wrap_retry_bluetooth_connection_error)
-
-
 class LEDBLE:
     def __init__(
-        self, ble_device: BLEDevice, retry_count: int = DEFAULT_ATTEMPTS
+        self, ble_device: BLEDevice, advertisement_data: AdvertisementData | None = None
     ) -> None:
         """Init the LEDBLE."""
         self._ble_device = ble_device
+        self._advertisement_data = advertisement_data
         self._operation_lock = asyncio.Lock()
         self._state = LEDBLEState()
         self._connect_lock: asyncio.Lock = asyncio.Lock()
-        self._cached_services: BleakGATTServiceCollection | None = None
         self._read_char: BleakGATTCharacteristic | None = None
         self._write_char: BleakGATTCharacteristic | None = None
         self._disconnect_timer: asyncio.TimerHandle | None = None
-        self._retry_count = retry_count
         self._client: BleakClientWithServiceCache | None = None
         self._expected_disconnect = False
         self.loop = asyncio.get_running_loop()
@@ -147,14 +76,12 @@ class LEDBLE:
         self._protocol: PROTOCOL_TYPES | None = None
         self._resolve_protocol_event = asyncio.Event()
 
-    def set_ble_device(self, ble_device: BLEDevice) -> None:
+    def set_ble_device_and_advertisement_data(
+        self, ble_device: BLEDevice, advertisement_data: AdvertisementData
+    ) -> None:
         """Set the ble device."""
-        if self._ble_device and ble_device_has_changed(self._ble_device, ble_device):
-            _LOGGER.debug(
-                "%s: New ble device details, clearing cached services", self.name
-            )
-            self._cached_services = None
         self._ble_device = ble_device
+        self._advertisement_data = advertisement_data
 
     @property
     def address(self) -> str:
@@ -178,9 +105,11 @@ class LEDBLE:
         return self._ble_device.name or self._ble_device.address
 
     @property
-    def rssi(self) -> str:
-        """Get the name of the device."""
-        return self._ble_device.rssi
+    def rssi(self) -> int | None:
+        """Get the rssi of the device."""
+        if self._advertisement_data:
+            return self._advertisement_data.rssi
+        return None
 
     @property
     def state(self) -> LEDBLEState:
@@ -216,7 +145,6 @@ class LEDBLE:
         _, _, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
         return int(v * 255)
 
-    @retry_bluetooth_connection_error
     async def update(self) -> None:
         """Update the LEDBLE."""
         await self._ensure_connected()
@@ -226,7 +154,6 @@ class LEDBLE:
         command = self._protocol.construct_state_query()
         await self._send_command([command])
 
-    @retry_bluetooth_connection_error
     async def turn_on(self) -> None:
         """Turn on."""
         _LOGGER.debug("%s: Turn on", self.name)
@@ -235,7 +162,6 @@ class LEDBLE:
         self._state = replace(self._state, power=True)
         self._fire_callbacks()
 
-    @retry_bluetooth_connection_error
     async def turn_off(self) -> None:
         """Turn off."""
         _LOGGER.debug("%s: Turn off", self.name)
@@ -257,7 +183,6 @@ class LEDBLE:
             return
         await self.set_rgb(self.rgb_unscaled, brightness)
 
-    @retry_bluetooth_connection_error
     async def set_rgb(
         self, rgb: tuple[int, int, int], brightness: int | None = None
     ) -> None:
@@ -283,7 +208,6 @@ class LEDBLE:
         )
         self._fire_callbacks()
 
-    @retry_bluetooth_connection_error
     async def set_rgbw(
         self, rgbw: tuple[int, int, int, int], brightness: int | None = None
     ) -> None:
@@ -309,7 +233,6 @@ class LEDBLE:
         )
         self._fire_callbacks()
 
-    @retry_bluetooth_connection_error
     async def set_white(self, brightness: int) -> None:
         """Set rgb."""
         _LOGGER.debug("%s: Set white: %s", self.name, brightness)
@@ -414,7 +337,7 @@ class LEDBLE:
                 self._ble_device,
                 self.name,
                 self._disconnected,
-                cached_services=self._cached_services,
+                use_services_cache=True,
                 ble_device_callback=lambda: self._ble_device,
             )
             _LOGGER.debug("%s: Connected; RSSI: %s", self.name, self.rssi)
@@ -422,7 +345,7 @@ class LEDBLE:
             if not resolved:
                 # Try to handle services failing to load
                 resolved = self._resolve_characteristics(await client.get_services())
-            self._cached_services = client.services if resolved else None
+
             self._client = client
             self._reset_disconnect_timer()
 
@@ -578,6 +501,7 @@ class LEDBLE:
                 await client.stop_notify(read_char)
                 await client.disconnect()
 
+    @retry_bluetooth_connection_error(DEFAULT_ATTEMPTS)
     async def _send_command_locked(self, commands: list[bytes]) -> None:
         """Send command to device and read response."""
         try:
@@ -616,14 +540,11 @@ class LEDBLE:
         self, commands: list[bytes], retry: int | None = None
     ) -> None:
         """Send command to device and read response."""
-        if retry is None:
-            retry = self._retry_count
         _LOGGER.debug(
             "%s: Sending commands %s",
             self.name,
             [command.hex() for command in commands],
         )
-        max_attempts = retry + 1
         if self._operation_lock.locked():
             _LOGGER.debug(
                 "%s: Operation already in progress, waiting for it to complete; RSSI: %s",
@@ -631,50 +552,29 @@ class LEDBLE:
                 self.rssi,
             )
         async with self._operation_lock:
-            for attempt in range(max_attempts):
-                try:
-                    await self._send_command_locked(commands)
-                    return
-                except BleakNotFoundError:
-                    _LOGGER.error(
-                        "%s: device not found, no longer in range, or poor RSSI: %s",
-                        self.name,
-                        self.rssi,
-                        exc_info=True,
-                    )
-                    return None
-                except CharacteristicMissingError as ex:
-                    if attempt == retry:
-                        _LOGGER.error(
-                            "%s: characteristic missing: %s; Stopping trying; RSSI: %s",
-                            self.name,
-                            ex,
-                            self.rssi,
-                            exc_info=True,
-                        )
-                        return None
-
-                    _LOGGER.debug(
-                        "%s: characteristic missing: %s; RSSI: %s",
-                        self.name,
-                        ex,
-                        self.rssi,
-                        exc_info=True,
-                    )
-                except BLEAK_EXCEPTIONS as ex:
-                    if attempt == retry:
-                        _LOGGER.error(
-                            "%s: communication failed; Stopping trying; RSSI: %s: %s",
-                            self.name,
-                            self.rssi,
-                            ex,
-                            exc_info=True,
-                        )
-                        return None
-
-                    _LOGGER.debug(
-                        "%s: communication failed with:", self.name, exc_info=True
-                    )
+            try:
+                await self._send_command_locked(commands)
+                return
+            except BleakNotFoundError:
+                _LOGGER.error(
+                    "%s: device not found, no longer in range, or poor RSSI: %s",
+                    self.name,
+                    self.rssi,
+                    exc_info=True,
+                )
+                raise
+            except CharacteristicMissingError as ex:
+                _LOGGER.debug(
+                    "%s: characteristic missing: %s; RSSI: %s",
+                    self.name,
+                    ex,
+                    self.rssi,
+                    exc_info=True,
+                )
+                raise
+            except BLEAK_EXCEPTIONS:
+                _LOGGER.debug("%s: communication failed", self.name, exc_info=True)
+                raise
 
         raise RuntimeError("Unreachable")
 
