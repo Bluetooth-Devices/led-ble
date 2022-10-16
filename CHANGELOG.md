@@ -2,6 +2,14 @@
 
 <!--next-version-placeholder-->
 
+## v1.0.0 (2022-10-16)
+### Feature
+* Update for new bleak version ([#33](https://github.com/Bluetooth-Devices/led-ble/issues/33)) ([`2be176c`](https://github.com/Bluetooth-Devices/led-ble/commit/2be176cfc5492f35bc3fc019e385a3698ea572bb))
+
+### Breaking
+* The set_ble_device function has been renamed set_ble_device_and_advertisement_data and now requires the advertisement_data. ([`2be176c`](https://github.com/Bluetooth-Devices/led-ble/commit/2be176cfc5492f35bc3fc019e385a3698ea572bb))
+* The constructor no longer takes a retry count since this does not need to be configurable ([`2be176c`](https://github.com/Bluetooth-Devices/led-ble/commit/2be176cfc5492f35bc3fc019e385a3698ea572bb))
+
 ## v0.10.1 (2022-09-15)
 ### Fix
 * Handle additional bleak exceptions ([#31](https://github.com/Bluetooth-Devices/led-ble/issues/31)) ([`1ff94f7`](https://github.com/Bluetooth-Devices/led-ble/commit/1ff94f770e86d630892261178018d861d4e74a72))
