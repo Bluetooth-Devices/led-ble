@@ -2,6 +2,14 @@
 
 <!--next-version-placeholder-->
 
+## v1.0.1 (2023-09-25)
+
+### Fix
+
+* Bump psr to fix CI ([#38](https://github.com/Bluetooth-Devices/led-ble/issues/38)) ([`ab09fed`](https://github.com/Bluetooth-Devices/led-ble/commit/ab09fedd632f937cb4064254c8e61c349f8c8d6d))
+* Drop async_timeout on py3.11+ ([#37](https://github.com/Bluetooth-Devices/led-ble/issues/37)) ([`fba769f`](https://github.com/Bluetooth-Devices/led-ble/commit/fba769f33cf7ac1f89105e29615e3d15707ecdcf))
+* Do not try to stop notify if read char is missing ([#36](https://github.com/Bluetooth-Devices/led-ble/issues/36)) ([`03c84f9`](https://github.com/Bluetooth-Devices/led-ble/commit/03c84f99deba04c3d04236f608e24ad137540b8c))
+
 ## v1.0.0 (2022-10-16)
 ### Feature
 * Update for new bleak version ([#33](https://github.com/Bluetooth-Devices/led-ble/issues/33)) ([`2be176c`](https://github.com/Bluetooth-Devices/led-ble/commit/2be176cfc5492f35bc3fc019e385a3698ea572bb))
