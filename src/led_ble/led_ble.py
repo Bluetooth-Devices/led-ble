@@ -7,7 +7,6 @@ from collections.abc import Callable
 from dataclasses import replace
 from typing import Any, TypeVar
 
-import async_timeout
 from bleak.backends.device import BLEDevice
 from bleak.backends.scanner import AdvertisementData
 from bleak.backends.service import BleakGATTCharacteristic, BleakGATTServiceCollection
@@ -35,6 +34,7 @@ from .const import (
 from .exceptions import CharacteristicMissingError
 from .model_db import get_model
 from .models import LEDBLEState
+from .util import asyncio_timeout
 
 BLEAK_BACKOFF_TIME = 0.25
 
@@ -611,7 +611,7 @@ class LEDBLE:
         if self._resolve_protocol_event.is_set():
             return
         await self._send_command_while_connected([STATE_COMMAND])
-        async with async_timeout.timeout(10):
+        async with asyncio_timeout(10):
             await self._resolve_protocol_event.wait()
 
     def _set_protocol(self, protocol: str) -> None:
