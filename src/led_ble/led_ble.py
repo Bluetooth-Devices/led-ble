@@ -498,7 +498,13 @@ class LEDBLE:
             self._read_char = None
             self._write_char = None
             if client and client.is_connected:
-                await client.stop_notify(read_char)
+                if read_char:
+                    try:
+                        await client.stop_notify(read_char)
+                    except BleakError:
+                        _LOGGER.debug(
+                            "%s: Failed to stop notifications", self.name, exc_info=True
+                        )
                 await client.disconnect()
 
     @retry_bluetooth_connection_error(DEFAULT_ATTEMPTS)
