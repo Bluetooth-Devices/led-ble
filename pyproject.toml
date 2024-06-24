@@ -3,7 +3,6 @@ name = "led-ble"
 version = "1.0.1"
 description = "Control a wide range of LED BLE devices"
 authors = ["J. Nick Koston <nick@koston.org>"]
-license = "Apache Software License 2.0"
 readme = "README.md"
 repository = "https://github.com/bluetooth-devices/led-ble"
 documentation = "https://led-ble.readthedocs.io"
@@ -13,6 +12,7 @@ classifiers = [
     "Natural Language :: English",
     "Operating System :: OS Independent",
     "Topic :: Software Development :: Libraries",
+    "License :: OSI Approved :: Apache Software License",
 ]
 packages = [
     { include = "led_ble", from = "src" },
