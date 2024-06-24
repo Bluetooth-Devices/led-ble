@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v1.0.2 (2024-06-24)
+
+### Fix
+
+* Fix license classifier ([#41](https://github.com/Bluetooth-Devices/led-ble/issues/41)) ([`b331b97`](https://github.com/Bluetooth-Devices/led-ble/commit/b331b9744caeb5fded22d8435bb8c5db7be8a362))
+
 ## v1.0.1 (2023-09-25)
 
 ### Fix

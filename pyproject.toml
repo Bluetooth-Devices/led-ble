@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "led-ble"
-version = "1.0.1"
+version = "1.0.2"
 description = "Control a wide range of LED BLE devices"
 authors = ["J. Nick Koston <nick@koston.org>"]
 readme = "README.md"
