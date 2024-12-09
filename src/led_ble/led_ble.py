@@ -221,7 +221,7 @@ class LEDBLE:
         assert self._protocol is not None  # nosec
 
         command = self._protocol.construct_levels_change(
-            True, *rgbw, None, None, LevelWriteMode.ALL
+            True, *rgbw, None, LevelWriteMode.ALL
         )
         await self._send_command(command)
 
