@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v1.1.0 (2024-12-11)
+
+### Feature
+
+* Add Python 3.13 support ([#55](https://github.com/Bluetooth-Devices/led-ble/issues/55)) ([`05f3818`](https://github.com/Bluetooth-Devices/led-ble/commit/05f38188572e898af89f53a0bf1cc4f146186876))
+
 ## v1.0.2 (2024-06-24)
 
 ### Fix
