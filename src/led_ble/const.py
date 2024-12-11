@@ -4,7 +4,7 @@ BASE_UUID_FORMAT = "0000{}-0000-1000-8000-00805f9b34fb"
 # "ffd4" - Triones:B30200000459C - legacy
 
 
-STATE_COMMAND = b"\xEF\x01\x77"
+STATE_COMMAND = b"\xef\x01\x77"
 
 
 class CharacteristicMissingError(Exception):
