@@ -11,7 +11,6 @@ DEFAULT_MODEL = 0xE3
 
 @dataclass(frozen=True)
 class LEDBLEModel:
-
     model_num: int  # The model number aka byte 1
     models: list[str]  # The model names from discovery
     description: str  # Description of the model ({type} {color_mode})
