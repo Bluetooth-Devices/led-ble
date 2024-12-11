@@ -195,9 +195,15 @@ class LEDBLE:
             rgb = self._calculate_brightness(rgb, brightness)
         _LOGGER.debug("%s: Set rgb after brightness: %s", self.name, rgb)
         assert self._protocol is not None  # nosec
-
+        r, g, b = rgb
         command = self._protocol.construct_levels_change(
-            True, *rgb, None, None, LevelWriteMode.COLORS
+            persist=True,
+            red=r,
+            green=g,
+            blue=b,
+            warm_white=None,
+            cool_white=None,
+            write_mode=LevelWriteMode.COLORS,
         )
         await self._send_command(command)
         self._state = replace(
@@ -216,12 +222,18 @@ class LEDBLE:
         for value in rgbw:
             if not 0 <= value <= 255:
                 raise ValueError("Value {} is outside the valid range of 0-255")
-        rgbw = rgbw_brightness(rgbw, brightness)
+        r, g, b, w = rgbw_brightness(rgbw, brightness)
         _LOGGER.debug("%s: Set rgbw after brightness: %s", self.name, rgbw)
         assert self._protocol is not None  # nosec
 
         command = self._protocol.construct_levels_change(
-            True, *rgbw, None, None, LevelWriteMode.ALL
+            persist=True,
+            red=r,
+            green=g,
+            blue=b,
+            warm_white=w,
+            cool_white=None,
+            write_mode=LevelWriteMode.ALL,
         )
         await self._send_command(command)
 
@@ -241,7 +253,13 @@ class LEDBLE:
         assert self._protocol is not None  # nosec
 
         command = self._protocol.construct_levels_change(
-            True, 0, 0, 0, brightness, None, LevelWriteMode.WHITES
+            persist=True,
+            red=0,
+            green=0,
+            blue=0,
+            warm_white=brightness,
+            cool_white=None,
+            write_mode=LevelWriteMode.WHITES,
         )
         await self._send_command(command)
         self._state = replace(
