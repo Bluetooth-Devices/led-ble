@@ -32,6 +32,15 @@ class LEDBLEModel:
 
 MODELS = [
     LEDBLEModel(
+        model_num=0x00,
+        models=["Hello Fairy:BMSL6"],
+        description="Controller RGB",
+        protocols=[
+            MinVersionProtocol(0, "Fairy"),
+        ],
+        color_modes=COLOR_MODES_RGB_W,  # Formerly rgbwcapable
+    ),
+    LEDBLEModel(
         model_num=0x04,
         models=["Triones:C10511000166"],
         description="Controller RGB&W",

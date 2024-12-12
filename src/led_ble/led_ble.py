@@ -25,8 +25,10 @@ from flux_led.pattern import EFFECT_ID_NAME, EFFECT_LIST, PresetPattern
 from flux_led.utils import rgbw_brightness
 
 from led_ble.model_db import LEDBLEModel
+from led_ble.protocol import ProtocolFairy
 
 from .const import (
+    HELLO_FAIRY_READ_CHARACTERISTIC,
     POSSIBLE_READ_CHARACTERISTIC_UUIDS,
     POSSIBLE_WRITE_CHARACTERISTIC_UUIDS,
     STATE_COMMAND,
@@ -279,10 +281,14 @@ class LEDBLE:
             brightness = int(brightness * 255 / 100)
             speed = int(speed * 255 / 100)
             return bytearray([0x9E, 0x00, pattern, speed, brightness, 0x00, 0xE9])
-        PresetPattern.valid_or_raise(pattern)
+        if not self._is_hello_fairy():
+            PresetPattern.valid_or_raise(pattern)
         if not (1 <= brightness <= 100):
             raise ValueError("Brightness must be between 1 and 100")
         assert self._protocol is not None  # nosec
+        if self._is_hello_fairy() and pattern > 58:
+            rgb = [[255, 0, 0], [0, 255, 0], [0, 0, 255]] * 8 + [[255, 0, 0]]
+            return self._protocol.construct_custom_effect(rgb, speed, "")
         return self._protocol.construct_preset_pattern(pattern, speed, brightness)
 
     async def async_set_preset_pattern(
@@ -431,29 +437,64 @@ class LEDBLE:
         """Returns the named effect."""
         return EFFECT_ID_NAME.get(self.preset_pattern_num)
 
+    # ideally replace with classes to encapsulate the differences between device makes
+    def _is_hello_fairy(self) -> bool:
+        if self._read_char is None:
+            return False
+        d = self._read_char.descriptors
+        c = d[0].characteristic_uuid if (len(d) > 0) else None
+        return c == HELLO_FAIRY_READ_CHARACTERISTIC
+
     def _notification_handler(self, _sender: int, data: bytearray) -> None:
         """Handle notification responses."""
         _LOGGER.debug("%s: Notification received: %s", self.name, data.hex())
 
-        if len(data) == 4 and data[0] == 0xCC:
-            on = data[1] == 0x23
-            self._state = replace(self._state, power=on)
-            return
-        if len(data) < 11:
-            return
-        model_num = data[1]
-        on = data[2] == 0x23
-        preset_pattern = data[3]
-        mode = data[4]
-        speed = data[5]
-        r = data[6]
-        g = data[7]
-        b = data[8]
-        w = data[9]
-        version = data[10]
-        self._state = LEDBLEState(
-            on, (r, g, b), w, model_num, preset_pattern, mode, speed, version
-        )
+        model_num = 0
+        if self._is_hello_fairy():
+            if data[0] == 0xAA:
+                if data[1] == 0x00:  # hw info
+                    if len(data) > 7:
+                        version_string = data[3:8].decode("ascii")
+                        _LOGGER.debug("version %s", version_string)
+                        self._state = replace(
+                            self._state,
+                            version_num=(data[3] - 48) * 100
+                            + (data[5] - 48) * 10
+                            + (data[7] - 48),
+                        )
+                    if len(data) > 12:
+                        model = data[8:13].decode("ascii")
+                        _LOGGER.debug("model %s", model)
+                    if len(data) > 24:
+                        lights = data[24]  # guessing
+                        _LOGGER.debug("lights %d", lights)
+                    if len(data) > 33:
+                        effects = data[33]  # guessing
+                        _LOGGER.debug("effects %d", effects)
+
+                if data[1] == 0x01:  # state info
+                    if len(data) > 6:
+                        self._state = replace(self._state, power=data[6] > 0)
+        else:
+            if len(data) == 4 and data[0] == 0xCC:
+                on = data[1] == 0x23
+                self._state = replace(self._state, power=on)
+                return
+            if len(data) < 11:
+                return
+            model_num = data[1]
+            on = data[2] == 0x23
+            preset_pattern = data[3]
+            mode = data[4]
+            speed = data[5]
+            r = data[6]
+            g = data[7]
+            b = data[8]
+            w = data[9]
+            version = data[10]
+            self._state = LEDBLEState(
+                on, (r, g, b), w, model_num, preset_pattern, mode, speed, version
+            )
 
         _LOGGER.debug(
             "%s: Notification received; RSSI: %s: %s %s",
@@ -466,8 +507,10 @@ class LEDBLE:
         if not self._resolve_protocol_event.is_set():
             self._resolve_protocol_event.set()
             self._model_data = get_model(model_num)
-            self._set_protocol(self._model_data.protocol_for_version_num(version))
-
+            if self._is_hello_fairy():
+                self._protocol = ProtocolFairy()
+            else:
+                self._set_protocol(self._model_data.protocol_for_version_num(version))
         self._fire_callbacks()
 
     def _reset_disconnect_timer(self) -> None:
@@ -622,13 +665,23 @@ class LEDBLE:
             if char := services.get_characteristic(characteristic):
                 self._write_char = char
                 break
+        _LOGGER.debug(
+            "using characteristic %s for read, characteristic %s for write",
+            self._read_char,
+            self._write_char,
+        )
         return bool(self._read_char and self._write_char)
 
     async def _resolve_protocol(self) -> None:
         """Resolve protocol."""
         if self._resolve_protocol_event.is_set():
             return
-        await self._send_command_while_connected([STATE_COMMAND])
+        if self._is_hello_fairy():
+            await self._send_command_while_connected(
+                [b"\xaa\x00\x00\xaa"]
+            )  # get version and capabilities
+        else:
+            await self._send_command_while_connected([STATE_COMMAND])
         async with asyncio_timeout(10):
             await self._resolve_protocol_event.wait()
 
