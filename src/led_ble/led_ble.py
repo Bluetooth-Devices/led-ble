@@ -447,6 +447,7 @@ class LEDBLE:
         _LOGGER.debug("%s: Notification received: %s", self.name, data.hex())
 
         model_num = 0
+        version = 0
         if self._is_hello_fairy():
             if data[0] == 0xAA:
                 if data[1] == 0x00:  # hw info
@@ -504,10 +505,7 @@ class LEDBLE:
         if not self._resolve_protocol_event.is_set():
             self._resolve_protocol_event.set()
             self._model_data = get_model(model_num)
-            if self._is_hello_fairy():
-                self._protocol = ProtocolFairy()
-            else:
-                self._set_protocol(self._model_data.protocol_for_version_num(version))
+            self._set_protocol(self._model_data.protocol_for_version_num(version))
         self._fire_callbacks()
 
     def _reset_disconnect_timer(self) -> None:
@@ -683,7 +681,11 @@ class LEDBLE:
             await self._resolve_protocol_event.wait()
 
     def _set_protocol(self, protocol: str) -> None:
-        cls = PROTOCOL_NAME_TO_CLS.get(protocol)
+        cls = (
+            ProtocolFairy
+            if self._is_hello_fairy()
+            else PROTOCOL_NAME_TO_CLS.get(protocol)
+        )  # flux-led
         if cls is None:
             raise ValueError(f"Invalid protocol: {protocol}")
         self._protocol = cls()
