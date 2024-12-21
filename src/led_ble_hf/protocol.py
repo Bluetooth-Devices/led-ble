@@ -22,11 +22,15 @@ class ProtocolFairy(ProtocolBase):
             bytearray([0xAA, 0x02, 0x01, 1 if turn_on else 0])
         )
 
-    def construct_message(self, raw_bytes: bytearray) -> bytearray:
-        """Calculate checksum of byte array and add to end."""
-        csum = sum(raw_bytes) & 0xFF
-        raw_bytes.append(csum)
-        return raw_bytes
+    def construct_pause(self, pause: bool) -> bytearray:
+        """The bytes to send for pausing or unpausing."""
+        return self.construct_message(bytearray([0xAA, 0x11, 0x01, 1 if pause else 0]))
+
+    def construct_ir_state(self, turn_on: bool) -> bytearray:
+        """The bytes to send for enabling/disabling the IR remote."""
+        return self.construct_message(
+            bytearray([0xAA, 0x0F, 0x01, 1 if turn_on else 0])
+        )
 
     def construct_levels_change(
         self,
@@ -117,3 +121,9 @@ class ProtocolFairy(ProtocolBase):
                 bytearray([0xAA, 0xD0, 0x04, transition, 0x64, speed, 0x01])
             )
         ]
+
+    def construct_message(self, raw_bytes: bytearray) -> bytearray:
+        """Calculate checksum of byte array and add to end."""
+        csum = sum(raw_bytes) & 0xFF
+        raw_bytes.append(csum)
+        return raw_bytes
