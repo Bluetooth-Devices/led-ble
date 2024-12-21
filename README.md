@@ -1,14 +1,14 @@
 # LED BLE
 
 <p align="center">
-  <a href="https://github.com/bluetooth-devices/led-ble/actions?query=workflow%3ACI">
-    <img src="https://img.shields.io/github/workflow/status/bluetooth-devices/led-ble/CI/main?label=CI&logo=github&style=flat-square" alt="CI Status" >
+  <a href="https://github.com/jr4/led-ble/actions?query=workflow%3ACI">
+    <img src="https://img.shields.io/github/workflow/status/jr4/led-ble/CI/main?label=CI&logo=github&style=flat-square" alt="CI Status" >
   </a>
   <a href="https://led-ble.readthedocs.io">
     <img src="https://img.shields.io/readthedocs/led-ble.svg?logo=read-the-docs&logoColor=fff&style=flat-square" alt="Documentation Status">
   </a>
-  <a href="https://codecov.io/gh/bluetooth-devices/led-ble">
-    <img src="https://img.shields.io/codecov/c/github/bluetooth-devices/led-ble.svg?logo=codecov&logoColor=fff&style=flat-square" alt="Test coverage percentage">
+  <a href="https://codecov.io/gh/jr4/led-ble">
+    <img src="https://img.shields.io/codecov/c/github/jr4/led-ble.svg?logo=codecov&logoColor=fff&style=flat-square" alt="Test coverage percentage">
   </a>
 </p>
 <p align="center">
@@ -30,13 +30,17 @@
   <img src="https://img.shields.io/pypi/l/led-ble.svg?style=flat-square" alt="License">
 </p>
 
-Control a wide range of LED BLE devices
+Control a wide range of LED BLE devices.
+
+This is a fork of the excellent [led-ble](https://github.com/Bluetooth-Devices/led-ble). This fork contains support
+for devices that can be controlled by the Hello Fairy app. (It does not drop support for the original library's devices, but
+is not tested on them as this author does not own any.)
 
 ## Installation
 
 Install this via pip (or your favourite package manager):
 
-`pip install led-ble`
+`pip install led-ble-hf`
 
 ## Contributors ✨
 

@@ -1,7 +1,7 @@
 import colorsys
 from math import floor
 from flux_led.protocol import ProtocolBase
-from led_ble.led_ble import LevelWriteMode
+from led_ble_hf.led_ble_hf import LevelWriteMode
 
 
 class ProtocolFairy(ProtocolBase):

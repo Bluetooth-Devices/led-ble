@@ -24,8 +24,8 @@ from flux_led.const import LevelWriteMode
 from flux_led.pattern import EFFECT_ID_NAME, EFFECT_LIST, PresetPattern
 from flux_led.utils import rgbw_brightness
 
-from led_ble.model_db import LEDBLEModel
-from led_ble.protocol import ProtocolFairy
+from led_ble_hf.model_db import LEDBLEModel
+from led_ble_hf.protocol import ProtocolFairy
 
 from .const import (
     HELLO_FAIRY_READ_CHARACTERISTIC,

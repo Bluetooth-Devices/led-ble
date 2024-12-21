@@ -1,5 +1,5 @@
-import led_ble
+import led_ble_hf
 
 
 def test_add():
-    assert led_ble
+    assert led_ble_hf

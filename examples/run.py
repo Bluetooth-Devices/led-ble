@@ -5,7 +5,7 @@ from bleak import BleakScanner
 from bleak.backends.device import BLEDevice
 from bleak.backends.scanner import AdvertisementData
 
-from led_ble import LEDBLE, LEDBLEState
+from led_ble_hf import LEDBLE, LEDBLEState
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -66,5 +66,5 @@ async def run() -> None:
 
 
 logging.basicConfig(level=logging.INFO)
-logging.getLogger("led_ble").setLevel(logging.DEBUG)
+logging.getLogger("led_ble_hf").setLevel(logging.DEBUG)
 asyncio.run(run())

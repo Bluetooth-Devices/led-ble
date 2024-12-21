@@ -1,11 +1,12 @@
 [tool.poetry]
-name = "led-ble"
-version = "1.1.1"
+name = "led-ble-hf"
+version = "1.0.0"
 description = "Control a wide range of LED BLE devices"
-authors = ["J. Nick Koston <nick@koston.org>"]
+authors = ["Jon <jon@jlrsoftwarellc.com>"] # forked from https://github.com/Bluetooth-Devices/led-ble by J. Nick Koston <nick@koston.org>"
+
 readme = "README.md"
-repository = "https://github.com/bluetooth-devices/led-ble"
-documentation = "https://led-ble.readthedocs.io"
+repository = "https://github.com/jr4/led-ble"
+documentation = "https://github.com/jr4/led-ble"
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "Intended Audience :: Developers",
@@ -15,12 +16,12 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
 ]
 packages = [
-    { include = "led_ble", from = "src" },
+    { include = "led_ble_hf", from = "src" },
 ]
 
 [tool.poetry.urls]
-"Bug Tracker" = "https://github.com/bluetooth-devices/led-ble/issues"
-"Changelog" = "https://github.com/bluetooth-devices/led-ble/blob/main/CHANGELOG.md"
+"Bug Tracker" = "https://github.com/jr4/led-ble/issues"
+"Changelog" = "https://github.com/jr4/led-ble/blob/main/CHANGELOG.md"
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -48,11 +49,11 @@ pytest-cov = "^3.0"
 [tool.semantic_release]
 branch = "main"
 version_toml = "pyproject.toml:tool.poetry.version"
-version_variable = "src/led_ble/__init__.py:__version__"
+version_variable = "src/led_ble_hf/__init__.py:__version__"
 build_command = "pip install poetry && poetry build"
 
 [tool.pytest.ini_options]
-addopts = "-v -Wdefault --cov=led_ble --cov-report=term-missing:skip-covered"
+addopts = "-v -Wdefault --cov=led_ble_hf --cov-report=term-missing:skip-covered"
 pythonpath = ["src"]
 
 [tool.coverage.run]
@@ -68,7 +69,7 @@ exclude_lines = [
 
 [tool.isort]
 profile = "black"
-known_first_party = ["led_ble", "tests"]
+known_first_party = ["led_ble_hf", "tests"]
 
 [tool.mypy]
 check_untyped_defs = true
