@@ -286,9 +286,6 @@ class LEDBLE:
         if not (1 <= brightness <= 100):
             raise ValueError("Brightness must be between 1 and 100")
         assert self._protocol is not None  # nosec
-        if self._is_hello_fairy() and pattern > 58:
-            rgb = [[255, 0, 0], [0, 255, 0], [0, 0, 255]] * 8 + [[255, 0, 0]]
-            return self._protocol.construct_custom_effect(rgb, speed, "")
         return self._protocol.construct_preset_pattern(pattern, speed, brightness)
 
     async def async_set_preset_pattern(

@@ -1,3 +1,4 @@
+from __future__ import annotations
 import colorsys
 from math import floor
 from flux_led.protocol import ProtocolBase
