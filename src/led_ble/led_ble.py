@@ -53,7 +53,7 @@ _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_ATTEMPTS = 3
 
-DREAM_EFFECTS = {f"Effect {i+1}": i for i in range(0, 255)}
+DREAM_EFFECTS = {f"Effect {i + 1}": i for i in range(0, 255)}
 DREAM_EFFECT_LIST = list(DREAM_EFFECTS)
 
 
@@ -426,7 +426,7 @@ class LEDBLE:
     def effect(self) -> str | None:
         """Return the current effect."""
         if self.dream and self.preset_pattern_num == 0:
-            return f"Effect {self.mode+1}"
+            return f"Effect {self.mode + 1}"
         return self._named_effect
 
     @property
