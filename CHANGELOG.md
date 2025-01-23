@@ -2,6 +2,17 @@
 
 
 
+## v1.1.4 (2025-01-23)
+
+### Chore
+
+* chore: update minimum bleak version (#74) ([`4757690`](https://github.com/Bluetooth-Devices/led-ble/commit/47576906fdd0865f750957451db5351b2affeff1))
+
+### Fix
+
+* fix: release upload privs (#75) ([`85f5e4a`](https://github.com/Bluetooth-Devices/led-ble/commit/85f5e4af771576e4d0febe36de78ab0eca6892e6))
+
+
 ## v1.1.3 (2025-01-23)
 
 ### Fix
