@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "led-ble"
-version = "1.1.1"
+version = "1.1.4"
 description = "Control a wide range of LED BLE devices"
 authors = ["J. Nick Koston <nick@koston.org>"]
 readme = "README.md"
@@ -23,14 +23,14 @@ packages = [
 "Changelog" = "https://github.com/bluetooth-devices/led-ble/blob/main/CHANGELOG.md"
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = ">=3.9,<3.14"
 
 # Documentation Dependencies
-Sphinx = {version = "^5.0", optional = true}
-sphinx-rtd-theme = {version = "^1.0", optional = true}
-myst-parser = {version = "^0.18", optional = true}
+Sphinx = {version = ">=5,<7", optional = true}
+sphinx-rtd-theme = {version = ">=1,<4", optional = true}
+myst-parser = {version = ">=0.18,<3.1", optional = true}
 bleak-retry-connector = ">=2.3.0"
-bleak = ">=0.19.0"
+bleak = ">=0.22.0"
 async-timeout = {version = ">=3.0.0", python = "<3.11"}
 flux-led = ">=0.28.32"
 
@@ -47,8 +47,8 @@ pytest-cov = "^6.0"
 
 [tool.semantic_release]
 branch = "main"
-version_toml = "pyproject.toml:tool.poetry.version"
-version_variable = "src/led_ble/__init__.py:__version__"
+version_toml = ["pyproject.toml:tool.poetry.version"]
+version_variables = ["src/led_ble/__init__.py:__version__"]
 build_command = "pip install poetry && poetry build"
 
 [tool.pytest.ini_options]

@@ -353,19 +353,29 @@ class LEDBLE:
                 self._reset_disconnect_timer()
                 return
             _LOGGER.debug("%s: Connecting; RSSI: %s", self.name, self.rssi)
-            client = await establish_connection(
-                BleakClientWithServiceCache,
-                self._ble_device,
-                self.name,
-                self._disconnected,
-                use_services_cache=True,
-                ble_device_callback=lambda: self._ble_device,
-            )
-            _LOGGER.debug("%s: Connected; RSSI: %s", self.name, self.rssi)
-            resolved = self._resolve_characteristics(client.services)
-            if not resolved:
-                # Try to handle services failing to load
-                resolved = self._resolve_characteristics(await client.get_services())
+            for attempt in range(2):
+                client = await establish_connection(
+                    BleakClientWithServiceCache,
+                    self._ble_device,
+                    self.name,
+                    self._disconnected,
+                    use_services_cache=True,
+                    ble_device_callback=lambda: self._ble_device,
+                )
+                _LOGGER.debug("%s: Connected; RSSI: %s", self.name, self.rssi)
+                if self._resolve_characteristics(client.services):
+                    # Supported characteristics found
+                    break
+                else:
+                    if attempt == 0:
+                        # Try to handle services failing to load
+                        await client.clear_cache()
+                        await client.disconnect()
+                        continue
+                    await client.disconnect()
+                    raise CharacteristicMissingError(
+                        "Failed to find supported characteristics, device may not be supported"
+                    )
 
             self._client = client
             self._reset_disconnect_timer()
