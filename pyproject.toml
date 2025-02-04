@@ -1,6 +1,6 @@
 [project]
 name = "led-ble"
-version = "1.1.4"
+version = "1.1.5"
 license = "Apache-2.0"
 description = "Control a wide range of LED BLE devices"
 authors = [{ name = "J. Nick Koston", email = "nick@koston.org" }]
