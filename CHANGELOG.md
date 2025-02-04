@@ -2,6 +2,38 @@
 
 
 
+## v1.1.6 (2025-02-04)
+
+### Fix
+
+* fix: detect dream models based on name as well (#82) ([`f31ffed`](https://github.com/Bluetooth-Devices/led-ble/commit/f31ffed54f8a7a1bd6b639f173fca14bbce3b9fc))
+
+
+## v1.1.5 (2025-02-04)
+
+### Chore
+
+* chore(pre-commit.ci): pre-commit autoupdate (#80)
+
+Co-authored-by: pre-commit-ci[bot] &lt;66853113+pre-commit-ci[bot]@users.noreply.github.com&gt; ([`965493d`](https://github.com/Bluetooth-Devices/led-ble/commit/965493def28f295212646dd802006e1fb4883320))
+
+* chore(deps): bump flux-led from 1.1.0 to 1.1.3 (#79) ([`2b58c7f`](https://github.com/Bluetooth-Devices/led-ble/commit/2b58c7f073db98e8ffa6ae6fecf2a3d9d3c948b2))
+
+* chore(deps-ci): bump python-semantic-release/python-semantic-release from 9.16.1 to 9.17.0 in the github-actions group (#78) ([`5925b55`](https://github.com/Bluetooth-Devices/led-ble/commit/5925b5538b0a853f1304a74b1f3bf1f0ca96b8d1))
+
+* chore(deps): bump sphinx from 6.2.1 to 7.4.7 (#76)
+
+Co-authored-by: dependabot[bot] &lt;49699333+dependabot[bot]@users.noreply.github.com&gt; ([`a4af2f4`](https://github.com/Bluetooth-Devices/led-ble/commit/a4af2f48aade1c4ef17e5aee4d660b131ef70edf))
+
+* chore(pre-commit.ci): pre-commit autoupdate (#77)
+
+Co-authored-by: pre-commit-ci[bot] &lt;66853113+pre-commit-ci[bot]@users.noreply.github.com&gt; ([`fc7a15b`](https://github.com/Bluetooth-Devices/led-ble/commit/fc7a15b48a765dc0f4f8b8a1bae866bd14377e76))
+
+### Fix
+
+* fix: update poetry to v2 + add license to metadata (#81) ([`ce71af7`](https://github.com/Bluetooth-Devices/led-ble/commit/ce71af7ebbd327e288f94e74c6deec9cd2a860b7))
+
+
 ## v1.1.4 (2025-01-23)
 
 ### Chore
