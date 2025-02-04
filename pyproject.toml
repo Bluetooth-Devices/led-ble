@@ -1,26 +1,30 @@
-[tool.poetry]
+[project]
 name = "led-ble"
 version = "1.1.4"
+license = "Apache-2.0"
 description = "Control a wide range of LED BLE devices"
-authors = ["J. Nick Koston <nick@koston.org>"]
+authors = [{ name = "J. Nick Koston", email = "nick@koston.org" }]
 readme = "README.md"
-repository = "https://github.com/bluetooth-devices/led-ble"
-documentation = "https://led-ble.readthedocs.io"
+requires-python = ">=3.9"
+dynamic = ["classifiers", "dependencies", "optional-dependencies"]
+
+[project.urls]
+"Documentation" = "https://led-ble.readthedocs.io"
+"Repository" = "https://github.com/bluetooth-devices/led-ble"
+"Bug Tracker" = "https://github.com/bluetooth-devices/led-ble/issues"
+"Changelog" = "https://github.com/bluetooth-devices/led-ble/blob/main/CHANGELOG.md"
+
+[tool.poetry]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "Intended Audience :: Developers",
     "Natural Language :: English",
     "Operating System :: OS Independent",
     "Topic :: Software Development :: Libraries",
-    "License :: OSI Approved :: Apache Software License",
 ]
 packages = [
     { include = "led_ble", from = "src" },
 ]
-
-[tool.poetry.urls]
-"Bug Tracker" = "https://github.com/bluetooth-devices/led-ble/issues"
-"Changelog" = "https://github.com/bluetooth-devices/led-ble/blob/main/CHANGELOG.md"
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.14"
@@ -41,13 +45,13 @@ docs = [
     "sphinx-rtd-theme",
 ]
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 pytest = "^8.3"
 pytest-cov = "^6.0"
 
 [tool.semantic_release]
 branch = "main"
-version_toml = ["pyproject.toml:tool.poetry.version"]
+version_toml = ["pyproject.toml:project.version"]
 version_variables = ["src/led_ble/__init__.py:__version__"]
 build_command = "pip install poetry && poetry build"
 
@@ -94,5 +98,5 @@ module = "docs.*"
 ignore_errors = true
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=2.0.0"]
 build-backend = "poetry.core.masonry.api"
