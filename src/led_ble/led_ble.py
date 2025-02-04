@@ -427,7 +427,10 @@ class LEDBLE:
     @property
     def dream(self) -> bool:
         """Return if the device is a dream."""
-        return self.model_num in (0x10,)
+        return self.model_num in (0x10,) or (
+            self._advertisement_data is not None
+            and self._advertisement_data.local_name.startswith("Dream")
+        )
 
     @property
     def effect(self) -> str | None:
