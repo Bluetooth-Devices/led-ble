@@ -2,6 +2,13 @@
 
 
 
+## v1.1.6 (2025-02-04)
+
+### Fix
+
+* fix: detect dream models based on name as well (#82) ([`f31ffed`](https://github.com/Bluetooth-Devices/led-ble/commit/f31ffed54f8a7a1bd6b639f173fca14bbce3b9fc))
+
+
 ## v1.1.5 (2025-02-04)
 
 ### Chore
