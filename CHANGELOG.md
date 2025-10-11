@@ -2,6 +2,68 @@
 
 
 
+## v1.1.7 (2025-04-07)
+
+### Chore
+
+* chore(pre-commit.ci): pre-commit autoupdate (#94)
+
+updates:
+- [github.com/commitizen-tools/commitizen: v4.4.1 → v4.5.0](https://github.com/commitizen-tools/commitizen/compare/v4.4.1...v4.5.0)
+- [github.com/astral-sh/ruff-pre-commit: v0.11.2 → v0.11.4](https://github.com/astral-sh/ruff-pre-commit/compare/v0.11.2...v0.11.4)
+
+Co-authored-by: pre-commit-ci[bot] &lt;66853113+pre-commit-ci[bot]@users.noreply.github.com&gt; ([`646106f`](https://github.com/Bluetooth-Devices/led-ble/commit/646106ff0b00b0a9d1c85a6466d92f1c8c7b9a15))
+
+* chore(pre-commit.ci): pre-commit autoupdate (#91)
+
+updates:
+- [github.com/PyCQA/flake8: 7.1.2 → 7.2.0](https://github.com/PyCQA/flake8/compare/7.1.2...7.2.0)
+- [github.com/python-poetry/poetry: 2.1.1 → 2.1.2](https://github.com/python-poetry/poetry/compare/2.1.1...2.1.2)
+
+Co-authored-by: pre-commit-ci[bot] &lt;66853113+pre-commit-ci[bot]@users.noreply.github.com&gt; ([`d2748c8`](https://github.com/Bluetooth-Devices/led-ble/commit/d2748c855d0494b742e44a7aca5674a7af7e546b))
+
+* chore(pre-commit.ci): pre-commit autoupdate (#90)
+
+updates:
+- [github.com/astral-sh/ruff-pre-commit: v0.11.0 → v0.11.2](https://github.com/astral-sh/ruff-pre-commit/compare/v0.11.0...v0.11.2)
+
+Co-authored-by: pre-commit-ci[bot] &lt;66853113+pre-commit-ci[bot]@users.noreply.github.com&gt; ([`7ef403b`](https://github.com/Bluetooth-Devices/led-ble/commit/7ef403b11bd798a6a2f4b1f031384a44bd02aa2b))
+
+* chore(pre-commit.ci): pre-commit autoupdate (#89) ([`5062d78`](https://github.com/Bluetooth-Devices/led-ble/commit/5062d788504b3af1b06188ddd1d49b5b9918dbfa))
+
+* chore(pre-commit.ci): pre-commit autoupdate (#88) ([`584a323`](https://github.com/Bluetooth-Devices/led-ble/commit/584a323d4f898a2283c051b1ad1c49d73d6bd580))
+
+* chore(pre-commit.ci): pre-commit autoupdate (#87)
+
+updates:
+- [github.com/commitizen-tools/commitizen: v4.2.2 → v4.4.1](https://github.com/commitizen-tools/commitizen/compare/v4.2.2...v4.4.1)
+- [github.com/astral-sh/ruff-pre-commit: v0.9.7 → v0.9.9](https://github.com/astral-sh/ruff-pre-commit/compare/v0.9.7...v0.9.9)
+
+Co-authored-by: pre-commit-ci[bot] &lt;66853113+pre-commit-ci[bot]@users.noreply.github.com&gt; ([`e884add`](https://github.com/Bluetooth-Devices/led-ble/commit/e884add38caf84a545338e401baee596729cbbd5))
+
+* chore(deps-ci): bump python-semantic-release/python-semantic-release from 9.17.0 to 9.21.0 in the github-actions group (#86) ([`3a40a13`](https://github.com/Bluetooth-Devices/led-ble/commit/3a40a13c433a6b2cc8763514ea97729e308591f4))
+
+* chore(pre-commit.ci): pre-commit autoupdate (#85)
+
+Co-authored-by: pre-commit-ci[bot] &lt;66853113+pre-commit-ci[bot]@users.noreply.github.com&gt; ([`7f5c813`](https://github.com/Bluetooth-Devices/led-ble/commit/7f5c813a55f3a91e3c150c4af3eb980139d3b724))
+
+* chore(pre-commit.ci): pre-commit autoupdate (#84)
+
+Co-authored-by: pre-commit-ci[bot] &lt;66853113+pre-commit-ci[bot]@users.noreply.github.com&gt; ([`fd81c8a`](https://github.com/Bluetooth-Devices/led-ble/commit/fd81c8a0e49ddeb8ce9489ee0d15e495593c196b))
+
+### Fix
+
+* fix: force release ([`509ddf8`](https://github.com/Bluetooth-Devices/led-ble/commit/509ddf84a399843c8fee2a682ebd236ca8313f73))
+
+* fix: Add local_name is not None check (#93)
+
+fix: add local_name is not None check
+
+AdvertisementData.local_name is an Optional[str] field, so make sure to check presence before computing on the value.
+
+See #92. ([`b21fe26`](https://github.com/Bluetooth-Devices/led-ble/commit/b21fe26beaaff9ceadda8353171d9d1ac2cf3581))
+
+
 ## v1.1.6 (2025-02-04)
 
 ### Fix
