@@ -11,8 +11,9 @@ class CharacteristicMissingError(Exception):
     """Raised when a characteristic is missing."""
 
 
+# "ffe5" potentially invalid, try last
 POSSIBLE_WRITE_CHARACTERISTIC_UUIDS = [
-    BASE_UUID_FORMAT.format(part) for part in ["ff01", "ffd5", "ffd9", "ffe5", "ffe9"]
+    BASE_UUID_FORMAT.format(part) for part in ["ff01", "ffd5", "ffd9", "ffe9", "ffe5"]
 ]
 POSSIBLE_READ_CHARACTERISTIC_UUIDS = [
     BASE_UUID_FORMAT.format(part) for part in ["ff02", "ffd0", "ffd4", "ffe0", "ffe4"]
