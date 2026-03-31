@@ -10,6 +10,7 @@ STATE_COMMAND = b"\xef\x01\x77"
 class CharacteristicMissingError(Exception):
     """Raised when a characteristic is missing."""
 
+
 # "ffe5" potentially invalid, try last
 POSSIBLE_WRITE_CHARACTERISTIC_UUIDS = [
     BASE_UUID_FORMAT.format(part) for part in ["ff01", "ffd5", "ffd9", "ffe9", "ffe5"]
