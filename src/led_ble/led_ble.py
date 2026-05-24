@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import colorsys
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Coroutine
 from dataclasses import replace
 from typing import Any, TypeVar
 
@@ -68,7 +68,7 @@ class LEDBLE:
         self._read_char: BleakGATTCharacteristic | None = None
         self._write_char: BleakGATTCharacteristic | None = None
         self._disconnect_timer: asyncio.TimerHandle | None = None
-        self._disconnect_task: asyncio.Task[None] | None = None
+        self._background_tasks: set[asyncio.Task[Any]] = set()
         self._client: BleakClientWithServiceCache | None = None
         self._expected_disconnect = False
         self.loop = asyncio.get_running_loop()
@@ -510,15 +510,19 @@ class LEDBLE:
     def _disconnect(self) -> None:
         """Disconnect from device."""
         self._disconnect_timer = None
-        # Keep a strong reference to the task so it is not garbage collected
-        # mid-flight (asyncio only holds a weak reference to running tasks).
-        self._disconnect_task = asyncio.create_task(self._execute_timed_disconnect())
-        self._disconnect_task.add_done_callback(self._on_disconnect_task_done)
+        self._create_background_task(self._execute_timed_disconnect())
 
-    def _on_disconnect_task_done(self, task: asyncio.Task[None]) -> None:
-        """Clear the disconnect task reference once it completes."""
-        if self._disconnect_task is task:
-            self._disconnect_task = None
+    def _create_background_task(self, coro: Coroutine[Any, Any, None]) -> None:
+        """Schedule a coroutine and keep a strong reference until it finishes.
+
+        asyncio only holds a weak reference to running tasks, so the task is
+        tracked in ``self._background_tasks`` to prevent it from being garbage
+        collected mid-flight. The done-callback discards it once it completes;
+        ``set.discard`` is idempotent and tracks N concurrent tasks correctly.
+        """
+        task = asyncio.create_task(coro)
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
 
     async def _execute_timed_disconnect(self) -> None:
         """Execute timed disconnection."""

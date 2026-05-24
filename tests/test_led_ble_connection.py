@@ -84,45 +84,30 @@ def test_disconnect_schedules_execution(loop, led):
     led._execute_timed_disconnect.assert_awaited_once()
 
 
-def test_disconnect_holds_task_reference_until_done(loop, led):
+def test_disconnect_holds_task_reference_until_done(loop, led) -> None:
     """The disconnect task must be referenced so it is not GC'd mid-flight."""
     started = asyncio.Event()
     release = asyncio.Event()
 
-    async def slow_disconnect():
+    async def slow_disconnect() -> None:
         started.set()
         await release.wait()
 
     led._execute_timed_disconnect = slow_disconnect
 
-    async def run():
+    async def run() -> None:
         led._disconnect()
         await started.wait()
         # While the coroutine is suspended, a strong reference is held.
-        assert led._disconnect_task is not None
-        assert not led._disconnect_task.done()
+        assert len(led._background_tasks) == 1
+        (task,) = led._background_tasks
+        assert not task.done()
         release.set()
-        await led._disconnect_task
+        await task
 
     loop.run_until_complete(run())
-    # The done-callback clears the reference once the task completes.
-    assert led._disconnect_task is None
-
-
-def test_disconnect_task_done_ignores_stale_callback(loop, led):
-    """A stale done-callback must not clear a newer disconnect task reference."""
-
-    async def run():
-        stale = asyncio.ensure_future(asyncio.sleep(0))
-        current = asyncio.ensure_future(asyncio.sleep(0))
-        led._disconnect_task = current
-        # The stale task's callback fires after it was already superseded.
-        led._on_disconnect_task_done(stale)
-        # The newer reference must survive untouched.
-        assert led._disconnect_task is current
-        await asyncio.gather(stale, current)
-
-    loop.run_until_complete(run())
+    # The done-callback discards the reference once the task completes.
+    assert led._background_tasks == set()
 
 
 def test_execute_timed_disconnect_delegates(loop, led):
