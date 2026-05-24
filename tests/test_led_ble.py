@@ -363,7 +363,7 @@ def test_set_rgb_updates_state(loop, led):
 def test_set_rgb_rejects_out_of_range(loop, led):
     led._protocol = _protocol_mock()
     led._send_command = AsyncMock()
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="300 is outside"):
         loop.run_until_complete(led.set_rgb((10, 20, 300)))
     led._send_command.assert_not_awaited()
 
@@ -379,7 +379,7 @@ def test_set_rgbw_updates_state(loop, led):
 def test_set_rgbw_rejects_out_of_range(loop, led):
     led._protocol = _protocol_mock()
     led._send_command = AsyncMock()
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="999 is outside"):
         loop.run_until_complete(led.set_rgbw((10, 20, 30, 999)))
     led._send_command.assert_not_awaited()
 
@@ -395,7 +395,7 @@ def test_set_white_updates_state(loop, led):
 def test_set_white_rejects_out_of_range(loop, led):
     led._protocol = _protocol_mock()
     led._send_command = AsyncMock()
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="256 is outside"):
         loop.run_until_complete(led.set_white(256))
     led._send_command.assert_not_awaited()
 

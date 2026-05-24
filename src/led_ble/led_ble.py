@@ -68,6 +68,7 @@ class LEDBLE:
         self._read_char: BleakGATTCharacteristic | None = None
         self._write_char: BleakGATTCharacteristic | None = None
         self._disconnect_timer: asyncio.TimerHandle | None = None
+        self._disconnect_task: asyncio.Task[None] | None = None
         self._client: BleakClientWithServiceCache | None = None
         self._expected_disconnect = False
         self.loop = asyncio.get_running_loop()
@@ -190,7 +191,7 @@ class LEDBLE:
         _LOGGER.debug("%s: Set rgb: %s brightness: %s", self.name, rgb, brightness)
         for value in rgb:
             if not 0 <= value <= 255:
-                raise ValueError("Value {} is outside the valid range of 0-255")
+                raise ValueError(f"Value {value} is outside the valid range of 0-255")
         if brightness is not None:
             rgb = self._calculate_brightness(rgb, brightness)
         _LOGGER.debug("%s: Set rgb after brightness: %s", self.name, rgb)
@@ -221,7 +222,7 @@ class LEDBLE:
         _LOGGER.debug("%s: Set rgbw: %s brightness: %s", self.name, rgbw, brightness)
         for value in rgbw:
             if not 0 <= value <= 255:
-                raise ValueError("Value {} is outside the valid range of 0-255")
+                raise ValueError(f"Value {value} is outside the valid range of 0-255")
         r, g, b, w = rgbw_brightness(rgbw, brightness)
         _LOGGER.debug("%s: Set rgbw after brightness: %s", self.name, rgbw)
         assert self._protocol is not None  # nosec
@@ -249,7 +250,7 @@ class LEDBLE:
         """Set rgb."""
         _LOGGER.debug("%s: Set white: %s", self.name, brightness)
         if not 0 <= brightness <= 255:
-            raise ValueError("Value {} is outside the valid range of 0-255")
+            raise ValueError(f"Value {brightness} is outside the valid range of 0-255")
         assert self._protocol is not None  # nosec
 
         command = self._protocol.construct_levels_change(
@@ -509,7 +510,15 @@ class LEDBLE:
     def _disconnect(self) -> None:
         """Disconnect from device."""
         self._disconnect_timer = None
-        asyncio.create_task(self._execute_timed_disconnect())
+        # Keep a strong reference to the task so it is not garbage collected
+        # mid-flight (asyncio only holds a weak reference to running tasks).
+        self._disconnect_task = asyncio.create_task(self._execute_timed_disconnect())
+        self._disconnect_task.add_done_callback(self._on_disconnect_task_done)
+
+    def _on_disconnect_task_done(self, task: asyncio.Task[None]) -> None:
+        """Clear the disconnect task reference once it completes."""
+        if self._disconnect_task is task:
+            self._disconnect_task = None
 
     async def _execute_timed_disconnect(self) -> None:
         """Execute timed disconnection."""

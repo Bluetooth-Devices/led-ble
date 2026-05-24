@@ -84,6 +84,31 @@ def test_disconnect_schedules_execution(loop, led):
     led._execute_timed_disconnect.assert_awaited_once()
 
 
+def test_disconnect_holds_task_reference_until_done(loop, led):
+    """The disconnect task must be referenced so it is not GC'd mid-flight."""
+    started = asyncio.Event()
+    release = asyncio.Event()
+
+    async def slow_disconnect():
+        started.set()
+        await release.wait()
+
+    led._execute_timed_disconnect = slow_disconnect
+
+    async def run():
+        led._disconnect()
+        await started.wait()
+        # While the coroutine is suspended, a strong reference is held.
+        assert led._disconnect_task is not None
+        assert not led._disconnect_task.done()
+        release.set()
+        await led._disconnect_task
+
+    loop.run_until_complete(run())
+    # The done-callback clears the reference once the task completes.
+    assert led._disconnect_task is None
+
+
 def test_execute_timed_disconnect_delegates(loop, led):
     led._execute_disconnect = AsyncMock()
     loop.run_until_complete(led._execute_timed_disconnect())
