@@ -7,10 +7,6 @@ BASE_UUID_FORMAT = "0000{}-0000-1000-8000-00805f9b34fb"
 STATE_COMMAND = b"\xef\x01\x77"
 
 
-class CharacteristicMissingError(Exception):
-    """Raised when a characteristic is missing."""
-
-
 # "ffe5" potentially invalid, try last
 POSSIBLE_WRITE_CHARACTERISTIC_UUIDS = [
     BASE_UUID_FORMAT.format(part) for part in ["ff01", "ffd5", "ffd9", "ffe9", "ffe5"]
@@ -18,5 +14,3 @@ POSSIBLE_WRITE_CHARACTERISTIC_UUIDS = [
 POSSIBLE_READ_CHARACTERISTIC_UUIDS = [
     BASE_UUID_FORMAT.format(part) for part in ["ff02", "ffd0", "ffd4", "ffe0", "ffe4"]
 ]
-
-QUERY_STATE_BYTES = bytearray([0xEF, 0x01, 0x77])
