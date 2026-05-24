@@ -82,6 +82,29 @@ MODELS = [
 MODEL_MAP: dict[int, LEDBLEModel] = {model.model_num: model for model in MODELS}
 
 
+def register_model(model: LEDBLEModel) -> LEDBLEModel | None:
+    """Register a custom device model in the model database.
+
+    Adds (or overrides) the entry for ``model.model_num`` so that a device
+    reporting that model number resolves to the supplied protocols, color modes
+    and description instead of the generic unknown-model fallback.
+
+    This lets integrators add support for a device that speaks one of the
+    flux_led protocols without forking the library. Call it once at import
+    time, before constructing :class:`~led_ble.LEDBLE`.
+
+    Returns the model that was previously registered for the same
+    ``model_num``, or ``None`` if this is a new entry.
+    """
+    previous = MODEL_MAP.get(model.model_num)
+    MODEL_MAP[model.model_num] = model
+    if previous is not None:
+        MODELS[MODELS.index(previous)] = model
+    else:
+        MODELS.append(model)
+    return previous
+
+
 def get_model(model_num: int, fallback_protocol: str | None = None) -> LEDBLEModel:
     """Return the LEDNETModel for the model_num."""
     return MODEL_MAP.get(
