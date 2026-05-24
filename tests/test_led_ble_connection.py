@@ -10,7 +10,7 @@ import asyncio
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from bleak.exc import BleakError
+from bleak.exc import BleakDBusError, BleakError
 from bleak_retry_connector import BleakNotFoundError
 
 from led_ble.const import STATE_COMMAND
@@ -273,3 +273,132 @@ def test_send_command_while_connected_reraises_bleak_exceptions(loop, led):
     led._send_command_locked = AsyncMock(side_effect=BleakError("comm failed"))
     with pytest.raises(BleakError):
         loop.run_until_complete(led._send_command_while_connected([b"\x01"]))
+
+
+# ---------------------------------------------------------------------------
+# _send_command_locked error recovery
+#
+# The locked sender must disconnect (to reset state for a later retry) and
+# re-raise on a BLE error. The retry decorator wraps this method, so we
+# neutralise asyncio.sleep to keep the backoff/retry delays out of the test.
+# ---------------------------------------------------------------------------
+
+
+def test_send_command_locked_disconnects_on_dbus_error(loop, led, monkeypatch):
+    monkeypatch.setattr(asyncio, "sleep", AsyncMock())
+    led._execute_command_locked = AsyncMock(
+        side_effect=BleakDBusError("org.bluez.Error.Failed", [])
+    )
+    led._execute_disconnect = AsyncMock()
+
+    with pytest.raises(BleakDBusError):
+        loop.run_until_complete(led._send_command_locked([b"\x01"]))
+
+    # A DBus error backs off then disconnects before propagating.
+    led._execute_disconnect.assert_awaited()
+
+
+def test_send_command_locked_disconnects_on_bleak_error(loop, led, monkeypatch):
+    monkeypatch.setattr(asyncio, "sleep", AsyncMock())
+    led._execute_command_locked = AsyncMock(side_effect=BleakError("boom"))
+    led._execute_disconnect = AsyncMock()
+
+    with pytest.raises(BleakError):
+        loop.run_until_complete(led._send_command_locked([b"\x01"]))
+
+    led._execute_disconnect.assert_awaited()
+
+
+# ---------------------------------------------------------------------------
+# Lock guards (concurrency edge paths)
+# ---------------------------------------------------------------------------
+
+
+def test_ensure_connected_double_checked_lock(loop, led, monkeypatch):
+    """A peer that connects while we wait for the lock is honoured on recheck.
+
+    Exercises the "connection already in progress" log and the second
+    ``is_connected`` check performed *after* the lock is acquired.
+    """
+    led._reset_disconnect_timer = Mock()
+    # If the post-lock recheck fails to short-circuit, we'd fall through to a
+    # real reconnect — make that loud rather than hanging.
+    monkeypatch.setattr(
+        "led_ble.led_ble.establish_connection",
+        AsyncMock(side_effect=AssertionError("should not reconnect")),
+    )
+    client = Mock()
+    client.is_connected = True
+
+    async def run():
+        await led._connect_lock.acquire()
+        task = asyncio.ensure_future(led._ensure_connected())
+        # Let the task log the in-progress branch and block acquiring the lock.
+        await asyncio.sleep(0)
+        # A concurrent connection lands before we release the lock.
+        led._client = client
+        led._connect_lock.release()
+        await task
+
+    loop.run_until_complete(run())
+
+    assert led._client is client
+    led._reset_disconnect_timer.assert_called()
+
+
+def test_send_command_while_connected_waits_for_operation_lock(loop, led):
+    """The operation-in-progress branch logs, then proceeds once the lock frees."""
+    led._send_command_locked = AsyncMock()
+
+    async def run():
+        await led._operation_lock.acquire()
+        task = asyncio.ensure_future(led._send_command_while_connected([b"\x01"]))
+        # Let the task log the in-progress branch and block on the lock.
+        await asyncio.sleep(0)
+        led._operation_lock.release()
+        await task
+
+    loop.run_until_complete(run())
+    led._send_command_locked.assert_awaited_once_with([b"\x01"])
+
+
+# ---------------------------------------------------------------------------
+# _ensure_connected / _execute_disconnect extra branches
+# ---------------------------------------------------------------------------
+
+
+def test_ensure_connected_skips_protocol_resolve_when_already_set(
+    loop, led, monkeypatch
+):
+    client = Mock()
+    client.is_connected = True
+    client.start_notify = AsyncMock()
+    client.services = Mock()
+    monkeypatch.setattr(
+        "led_ble.led_ble.establish_connection", AsyncMock(return_value=client)
+    )
+    led._resolve_characteristics = Mock(return_value=True)
+    led._resolve_protocol = AsyncMock()
+    led._protocol = Mock()  # already resolved from a prior connection
+
+    loop.run_until_complete(led._ensure_connected())
+    try:
+        led._resolve_protocol.assert_not_awaited()
+    finally:
+        if led._disconnect_timer:
+            led._disconnect_timer.cancel()
+
+
+def test_execute_disconnect_without_read_char_skips_stop_notify(loop, led):
+    client = Mock()
+    client.is_connected = True
+    client.stop_notify = AsyncMock()
+    client.disconnect = AsyncMock()
+    led._client = client
+    led._read_char = None  # no characteristic to unsubscribe from
+
+    loop.run_until_complete(led._execute_disconnect())
+
+    client.stop_notify.assert_not_awaited()
+    client.disconnect.assert_awaited_once()
+    assert led._client is None
