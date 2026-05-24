@@ -291,7 +291,7 @@ class LEDBLE:
     ) -> None:
         """Set a preset pattern on the device."""
         command = self._generate_preset_pattern(effect, speed, brightness)
-        await self._send_command(command)
+        await self._send_command(bytes(command))
         if self.dream:
             self._state = replace(self._state, preset_pattern=0, mode=effect)
         else:

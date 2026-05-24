@@ -84,7 +84,7 @@ def test_disconnect_schedules_execution(loop, led):
     led._execute_timed_disconnect.assert_awaited_once()
 
 
-def test_disconnect_holds_task_reference_until_done(loop, led) -> None:
+def test_disconnect_holds_task_reference_until_done(loop, led):
     """The disconnect task must be referenced so it is not GC'd mid-flight."""
     started = asyncio.Event()
     release = asyncio.Event()
