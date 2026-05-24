@@ -540,7 +540,7 @@ class LEDBLE:
                 await client.disconnect()
 
     @retry_bluetooth_connection_error(DEFAULT_ATTEMPTS)
-    async def _send_command_locked(self, commands: list[bytes]) -> None:
+    async def _send_command_locked(self, commands: list[bytes | bytearray]) -> None:
         """Send command to device and read response."""
         try:
             await self._execute_command_locked(commands)
@@ -565,7 +565,9 @@ class LEDBLE:
             raise
 
     async def _send_command(
-        self, commands: list[bytes] | bytes, retry: int | None = None
+        self,
+        commands: list[bytes | bytearray] | bytes | bytearray,
+        retry: int | None = None,
     ) -> None:
         """Send command to device and read response."""
         await self._ensure_connected()
@@ -575,7 +577,7 @@ class LEDBLE:
         await self._send_command_while_connected(commands, retry)
 
     async def _send_command_while_connected(
-        self, commands: list[bytes], retry: int | None = None
+        self, commands: list[bytes | bytearray], retry: int | None = None
     ) -> None:
         """Send command to device and read response."""
         _LOGGER.debug(
@@ -616,7 +618,7 @@ class LEDBLE:
 
         raise RuntimeError("Unreachable")
 
-    async def _execute_command_locked(self, commands: list[bytes]) -> None:
+    async def _execute_command_locked(self, commands: list[bytes | bytearray]) -> None:
         """Execute command and read response."""
         assert self._client is not None  # nosec
         if not self._read_char:
