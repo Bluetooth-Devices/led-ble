@@ -95,6 +95,9 @@ exclude = [
 [[tool.mypy.overrides]]
 module = "tests.*"
 allow_untyped_defs = true
+# Tests routinely monkeypatch instance methods with Mock/AsyncMock, which is a
+# normal pattern in test code rather than a real typing error.
+disable_error_code = ["method-assign"]
 
 [[tool.mypy.overrides]]
 module = "docs.*"
