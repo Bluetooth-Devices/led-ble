@@ -15,6 +15,7 @@ from bleak_retry_connector import BleakNotFoundError
 
 from led_ble.const import STATE_COMMAND
 from led_ble.exceptions import CharacteristicMissingError
+from led_ble.led_ble import LEDBLE
 
 # A model_num / version that resolves to a real flux_led protocol class.
 KNOWN_MODEL = 0xE3
@@ -284,7 +285,9 @@ def test_send_command_while_connected_reraises_bleak_exceptions(loop, led):
 # ---------------------------------------------------------------------------
 
 
-def test_send_command_locked_disconnects_on_dbus_error(loop, led, monkeypatch):
+def test_send_command_locked_disconnects_on_dbus_error(
+    loop: asyncio.AbstractEventLoop, led: LEDBLE, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(asyncio, "sleep", AsyncMock())
     led._execute_command_locked = AsyncMock(
         side_effect=BleakDBusError("org.bluez.Error.Failed", [])
@@ -298,7 +301,9 @@ def test_send_command_locked_disconnects_on_dbus_error(loop, led, monkeypatch):
     led._execute_disconnect.assert_awaited()
 
 
-def test_send_command_locked_disconnects_on_bleak_error(loop, led, monkeypatch):
+def test_send_command_locked_disconnects_on_bleak_error(
+    loop: asyncio.AbstractEventLoop, led: LEDBLE, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(asyncio, "sleep", AsyncMock())
     led._execute_command_locked = AsyncMock(side_effect=BleakError("boom"))
     led._execute_disconnect = AsyncMock()
@@ -314,7 +319,9 @@ def test_send_command_locked_disconnects_on_bleak_error(loop, led, monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-def test_ensure_connected_double_checked_lock(loop, led, monkeypatch):
+def test_ensure_connected_double_checked_lock(
+    loop: asyncio.AbstractEventLoop, led: LEDBLE, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """A peer that connects while we wait for the lock is honoured on recheck.
 
     Exercises the "connection already in progress" log and the second
@@ -330,7 +337,7 @@ def test_ensure_connected_double_checked_lock(loop, led, monkeypatch):
     client = Mock()
     client.is_connected = True
 
-    async def run():
+    async def run() -> None:
         await led._connect_lock.acquire()
         task = asyncio.ensure_future(led._ensure_connected())
         # Let the task log the in-progress branch and block acquiring the lock.
@@ -346,11 +353,13 @@ def test_ensure_connected_double_checked_lock(loop, led, monkeypatch):
     led._reset_disconnect_timer.assert_called()
 
 
-def test_send_command_while_connected_waits_for_operation_lock(loop, led):
+def test_send_command_while_connected_waits_for_operation_lock(
+    loop: asyncio.AbstractEventLoop, led: LEDBLE
+) -> None:
     """The operation-in-progress branch logs, then proceeds once the lock frees."""
     led._send_command_locked = AsyncMock()
 
-    async def run():
+    async def run() -> None:
         await led._operation_lock.acquire()
         task = asyncio.ensure_future(led._send_command_while_connected([b"\x01"]))
         # Let the task log the in-progress branch and block on the lock.
@@ -368,8 +377,8 @@ def test_send_command_while_connected_waits_for_operation_lock(loop, led):
 
 
 def test_ensure_connected_skips_protocol_resolve_when_already_set(
-    loop, led, monkeypatch
-):
+    loop: asyncio.AbstractEventLoop, led: LEDBLE, monkeypatch: pytest.MonkeyPatch
+) -> None:
     client = Mock()
     client.is_connected = True
     client.start_notify = AsyncMock()
@@ -389,7 +398,9 @@ def test_ensure_connected_skips_protocol_resolve_when_already_set(
             led._disconnect_timer.cancel()
 
 
-def test_execute_disconnect_without_read_char_skips_stop_notify(loop, led):
+def test_execute_disconnect_without_read_char_skips_stop_notify(
+    loop: asyncio.AbstractEventLoop, led: LEDBLE
+) -> None:
     client = Mock()
     client.is_connected = True
     client.stop_notify = AsyncMock()
