@@ -79,7 +79,7 @@ def test_protocol_for_version_num_selects_by_min_version():
     assert model.protocol_for_version_num(0) == "LEDENET_ORIGINAL"
 
 
-def test_protocol_for_version_num_below_all_minimums_uses_default():
+def test_protocol_for_version_num_below_all_minimums_uses_default() -> None:
     # When no protocol's min_version is satisfied, the loop completes without
     # a match and the last (lowest) protocol set before the loop is returned.
     model = LEDBLEModel(
