@@ -1,11 +1,11 @@
 [project]
 name = "led-ble"
-version = "1.1.8"
+version = "1.1.10"
 license = "Apache-2.0"
 description = "Control a wide range of LED BLE devices"
 authors = [{ name = "J. Nick Koston", email = "nick@koston.org" }]
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dynamic = ["classifiers", "dependencies", "optional-dependencies"]
 
 [project.urls]
@@ -27,7 +27,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.9,<3.14"
+python = ">=3.10,<3.14"
 
 # Documentation Dependencies
 Sphinx = {version = ">=5,<8", optional = true}
@@ -74,6 +74,9 @@ exclude_lines = [
 profile = "black"
 known_first_party = ["led_ble", "tests"]
 
+[tool.ruff]
+target-version = "py39"
+
 [tool.mypy]
 check_untyped_defs = true
 disallow_any_generics = true
@@ -92,6 +95,9 @@ exclude = [
 [[tool.mypy.overrides]]
 module = "tests.*"
 allow_untyped_defs = true
+# Tests routinely monkeypatch instance methods with Mock/AsyncMock, which is a
+# normal pattern in test code rather than a real typing error.
+disable_error_code = ["method-assign"]
 
 [[tool.mypy.overrides]]
 module = "docs.*"
