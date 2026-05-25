@@ -74,6 +74,9 @@ exclude_lines = [
 profile = "black"
 known_first_party = ["led_ble", "tests"]
 
+[tool.ruff]
+target-version = "py39"
+
 [tool.mypy]
 check_untyped_defs = true
 disallow_any_generics = true
