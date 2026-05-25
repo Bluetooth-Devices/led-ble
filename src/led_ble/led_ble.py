@@ -579,19 +579,15 @@ class LEDBLE:
             await self._execute_disconnect()
             raise
 
-    async def _send_command(
-        self, commands: list[bytes] | bytes, retry: int | None = None
-    ) -> None:
+    async def _send_command(self, commands: list[bytes] | bytes) -> None:
         """Send command to device and read response."""
         await self._ensure_connected()
         await self._resolve_protocol()
         if not isinstance(commands, list):
             commands = [commands]
-        await self._send_command_while_connected(commands, retry)
+        await self._send_command_while_connected(commands)
 
-    async def _send_command_while_connected(
-        self, commands: list[bytes], retry: int | None = None
-    ) -> None:
+    async def _send_command_while_connected(self, commands: list[bytes]) -> None:
         """Send command to device and read response."""
         _LOGGER.debug(
             "%s: Sending commands %s",
