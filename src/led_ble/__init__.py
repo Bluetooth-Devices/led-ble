@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-__version__ = "1.1.9"
+__version__ = "1.1.10"
 
 
 from bleak_retry_connector import get_device
