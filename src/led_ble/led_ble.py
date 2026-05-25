@@ -272,18 +272,20 @@ class LEDBLE:
 
     def _generate_preset_pattern(
         self, pattern: int, speed: int, brightness: int
-    ) -> bytearray:
+    ) -> bytes:
         """Generate the preset pattern protocol bytes."""
         if self.dream:
             # TODO: move this to the protocol
             brightness = int(brightness * 255 / 100)
             speed = int(speed * 255 / 100)
-            return bytearray([0x9E, 0x00, pattern, speed, brightness, 0x00, 0xE9])
+            return bytes([0x9E, 0x00, pattern, speed, brightness, 0x00, 0xE9])
         PresetPattern.valid_or_raise(pattern)
         if not (1 <= brightness <= 100):
             raise ValueError("Brightness must be between 1 and 100")
         assert self._protocol is not None  # nosec
-        return self._protocol.construct_preset_pattern(pattern, speed, brightness)
+        return bytes(
+            self._protocol.construct_preset_pattern(pattern, speed, brightness)
+        )
 
     async def async_set_preset_pattern(
         self, effect: int, speed: int, brightness: int = 100
