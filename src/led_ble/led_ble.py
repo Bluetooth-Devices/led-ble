@@ -27,9 +27,16 @@ from flux_led.utils import rgbw_brightness
 from led_ble.model_db import LEDBLEModel
 
 from .const import (
+    COLOR_ORDER_QUERY,
+    COLOR_ORDER_RESPONSE_LEN,
+    COLOR_ORDER_RESPONSE_PREFIX,
+    COLOR_ORDER_SET_PREFIX,
+    COLOR_ORDER_SUFFIX,
     POSSIBLE_READ_CHARACTERISTIC_UUIDS,
     POSSIBLE_WRITE_CHARACTERISTIC_UUIDS,
     STATE_COMMAND,
+    ColorOrder,
+    DeviceType,
 )
 from .exceptions import CharacteristicMissingError
 from .model_db import get_model
@@ -144,6 +151,16 @@ class LEDBLE:
         r, g, b = self.rgb
         _, _, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
         return int(v * 255)
+
+    @property
+    def color_order(self) -> int | None:
+        """Return the configured color order, or None if not yet known."""
+        return self._state.color_order
+
+    @property
+    def device_type(self) -> int | None:
+        """Return the configured device type, or None if not yet known."""
+        return self._state.device_type
 
     async def update(self) -> None:
         """Update the LEDBLE."""
@@ -269,6 +286,47 @@ class LEDBLE:
             preset_pattern=1 if self.dream else self.preset_pattern_num,
         )
         self._fire_callbacks()
+
+    async def set_color_order(
+        self, color_order: ColorOrder, device_type: DeviceType
+    ) -> None:
+        """Set the strip color order and device type.
+
+        The wire format was reverse-engineered from the LEDBLUE app (see
+        issue #18) and is pending hardware verification:
+        ``0x22 <color_order> <device_type> 0x33``.
+        """
+        _LOGGER.debug(
+            "%s: Set color order: %s device type: %s",
+            self.name,
+            color_order,
+            device_type,
+        )
+        command = bytes(
+            [
+                COLOR_ORDER_SET_PREFIX,
+                int(color_order),
+                int(device_type),
+                COLOR_ORDER_SUFFIX,
+            ]
+        )
+        await self._send_command([command])
+        self._state = replace(
+            self._state,
+            color_order=int(color_order),
+            device_type=int(device_type),
+        )
+        self._fire_callbacks()
+
+    async def get_color_order(self) -> None:
+        """Query the strip color order and device type.
+
+        Sends ``0xE2 0x01 0x77``; the device replies asynchronously and the
+        response is parsed in :meth:`_notification_handler`, which updates the
+        ``color_order`` / ``device_type`` state and fires callbacks.
+        """
+        _LOGGER.debug("%s: Get color order", self.name)
+        await self._send_command([COLOR_ORDER_QUERY])
 
     def _generate_preset_pattern(
         self, pattern: int, speed: int, brightness: int
@@ -454,6 +512,14 @@ class LEDBLE:
         if len(data) == 4 and data[0] == 0xCC:
             on = data[1] == 0x23
             self._state = replace(self._state, power=on)
+            return
+        if (
+            len(data) == COLOR_ORDER_RESPONSE_LEN
+            and data[0] == COLOR_ORDER_RESPONSE_PREFIX
+        ):
+            # Reply to get_color_order: 0xE2 <color_order> <device_type> 0x33
+            self._state = replace(self._state, color_order=data[1], device_type=data[2])
+            self._fire_callbacks()
             return
         if len(data) < 11:
             return
