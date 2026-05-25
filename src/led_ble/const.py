@@ -1,3 +1,10 @@
+# Re-exported for backwards compatibility. const.py previously defined its own
+# CharacteristicMissingError that shadowed the real one in exceptions.py, causing
+# an exception-identity mismatch for anyone importing it from here. Re-exporting
+# the canonical class keeps `from led_ble.const import CharacteristicMissingError`
+# working *and* pointing at the exception the library actually raises.
+from .exceptions import CharacteristicMissingError  # noqa: F401
+
 BASE_UUID_FORMAT = "0000{}-0000-1000-8000-00805f9b34fb"
 
 # "ff01" - 0x97 socket - LEDnetWF010097DAB37A, LEDnetWF01001C49D272
