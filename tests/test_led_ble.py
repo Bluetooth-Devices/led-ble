@@ -293,6 +293,32 @@ def test_resolve_characteristics_missing(led):
     assert led._write_char is None
 
 
+def test_resolve_characteristics_resets_stale_chars(led):
+    """A partial resolve must not leak a stale char into the next attempt.
+
+    Simulates the reconnect path: attempt 0 resolves only the read char,
+    attempt 1 sees services that only resolve the write char. Without a
+    reset, the stale read char from the dead client would satisfy the
+    read-and-write check and return True against mismatched clients.
+    """
+    read_uuid = POSSIBLE_READ_CHARACTERISTIC_UUIDS[0]
+    write_uuid = POSSIBLE_WRITE_CHARACTERISTIC_UUIDS[0]
+    stale_read = object()
+
+    # Attempt 0: only the read char resolves -> partial, returns False.
+    assert led._resolve_characteristics(FakeServices({read_uuid: stale_read})) is False
+    assert led._read_char is stale_read
+
+    # Attempt 1: fresh services expose only the write char.
+    fresh_write = object()
+    assert (
+        led._resolve_characteristics(FakeServices({write_uuid: fresh_write})) is False
+    )
+    # The stale read char must have been cleared, not retained.
+    assert led._read_char is None
+    assert led._write_char is fresh_write
+
+
 # ---------------------------------------------------------------------------
 # Brightness math / preset generation
 # ---------------------------------------------------------------------------

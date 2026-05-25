@@ -643,6 +643,10 @@ class LEDBLE:
 
     def _resolve_characteristics(self, services: BleakGATTServiceCollection) -> bool:
         """Resolve characteristics."""
+        # Reset first so a partial resolve from a prior (now-disconnected)
+        # attempt can't satisfy the read-and-write check with stale objects.
+        self._read_char = None
+        self._write_char = None
         for characteristic in POSSIBLE_READ_CHARACTERISTIC_UUIDS:
             if char := services.get_characteristic(characteristic):
                 self._read_char = char
