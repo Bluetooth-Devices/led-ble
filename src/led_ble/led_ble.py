@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import colorsys
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Coroutine
 from dataclasses import replace
 from typing import Any, TypeVar
 
@@ -68,6 +68,7 @@ class LEDBLE:
         self._read_char: BleakGATTCharacteristic | None = None
         self._write_char: BleakGATTCharacteristic | None = None
         self._disconnect_timer: asyncio.TimerHandle | None = None
+        self._background_tasks: set[asyncio.Task[Any]] = set()
         self._client: BleakClientWithServiceCache | None = None
         self._expected_disconnect = False
         self.loop = asyncio.get_running_loop()
@@ -190,7 +191,7 @@ class LEDBLE:
         _LOGGER.debug("%s: Set rgb: %s brightness: %s", self.name, rgb, brightness)
         for value in rgb:
             if not 0 <= value <= 255:
-                raise ValueError("Value {} is outside the valid range of 0-255")
+                raise ValueError(f"Value {value} is outside the valid range of 0-255")
         if brightness is not None:
             rgb = self._calculate_brightness(rgb, brightness)
         _LOGGER.debug("%s: Set rgb after brightness: %s", self.name, rgb)
@@ -221,7 +222,7 @@ class LEDBLE:
         _LOGGER.debug("%s: Set rgbw: %s brightness: %s", self.name, rgbw, brightness)
         for value in rgbw:
             if not 0 <= value <= 255:
-                raise ValueError("Value {} is outside the valid range of 0-255")
+                raise ValueError(f"Value {value} is outside the valid range of 0-255")
         r, g, b, w = rgbw_brightness(rgbw, brightness)
         _LOGGER.debug("%s: Set rgbw after brightness: %s", self.name, rgbw)
         assert self._protocol is not None  # nosec
@@ -249,7 +250,7 @@ class LEDBLE:
         """Set rgb."""
         _LOGGER.debug("%s: Set white: %s", self.name, brightness)
         if not 0 <= brightness <= 255:
-            raise ValueError("Value {} is outside the valid range of 0-255")
+            raise ValueError(f"Value {brightness} is outside the valid range of 0-255")
         assert self._protocol is not None  # nosec
 
         command = self._protocol.construct_levels_change(
@@ -292,7 +293,7 @@ class LEDBLE:
     ) -> None:
         """Set a preset pattern on the device."""
         command = self._generate_preset_pattern(effect, speed, brightness)
-        await self._send_command(command)
+        await self._send_command(bytes(command))
         if self.dream:
             self._state = replace(self._state, preset_pattern=0, mode=effect)
         else:
@@ -511,7 +512,19 @@ class LEDBLE:
     def _disconnect(self) -> None:
         """Disconnect from device."""
         self._disconnect_timer = None
-        asyncio.create_task(self._execute_timed_disconnect())
+        self._create_background_task(self._execute_timed_disconnect())
+
+    def _create_background_task(self, coro: Coroutine[Any, Any, None]) -> None:
+        """Schedule a coroutine and keep a strong reference until it finishes.
+
+        asyncio only holds a weak reference to running tasks, so the task is
+        tracked in ``self._background_tasks`` to prevent it from being garbage
+        collected mid-flight. The done-callback discards it once it completes;
+        ``set.discard`` is idempotent and tracks N concurrent tasks correctly.
+        """
+        task = asyncio.create_task(coro)
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
 
     async def _execute_timed_disconnect(self) -> None:
         """Execute timed disconnection."""
