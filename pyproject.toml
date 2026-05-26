@@ -75,7 +75,7 @@ profile = "black"
 known_first_party = ["led_ble", "tests"]
 
 [tool.ruff]
-target-version = "py39"
+target-version = "py310"
 
 [tool.mypy]
 check_untyped_defs = true
