@@ -38,9 +38,6 @@ from .util import asyncio_timeout
 
 BLEAK_BACKOFF_TIME = 0.25
 
-__version__ = "0.5.0"
-
-
 WrapFuncType = TypeVar("WrapFuncType", bound=Callable[..., Any])
 
 DISCONNECT_DELAY = 120
@@ -293,7 +290,7 @@ class LEDBLE:
     ) -> None:
         """Set a preset pattern on the device."""
         command = self._generate_preset_pattern(effect, speed, brightness)
-        await self._send_command(bytes(command))
+        await self._send_command(command)
         if self.dream:
             self._state = replace(self._state, preset_pattern=0, mode=effect)
         else:
