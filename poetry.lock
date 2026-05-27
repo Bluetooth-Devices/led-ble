@@ -88,24 +88,21 @@ pythonista = ["bleak-pythonista (>=0.1.1)"]
 
 [[package]]
 name = "bleak-retry-connector"
-version = "2.13.1"
+version = "4.4.4"
 description = "A connector for Bleak Clients that handles transient connection failures"
 optional = false
-python-versions = ">=3.9,<4.0"
+python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "bleak_retry_connector-2.13.1-py3-none-any.whl", hash = "sha256:9fdab97d7f1cc1b1948412af2cc6f7721e843fb9d2f9b02b7cc26eb52c7ee486"},
-    {file = "bleak_retry_connector-2.13.1.tar.gz", hash = "sha256:af344bd81d0f7d33a0994e30fe9e28dfdc3cb970095cc1ba547a3b6ae2ee4543"},
+    {file = "bleak_retry_connector-4.4.4-py3-none-any.whl", hash = "sha256:851c8a1c69821d89edc80f0e93278866e8cebc9c6a9d3aa683f454f9cbe8010a"},
+    {file = "bleak_retry_connector-4.4.4.tar.gz", hash = "sha256:6716c159db3fc0a4a454fc325521d5cdf398594310238ce93b9f534c8608c36c"},
 ]
 
 [package.dependencies]
-async-timeout = ">=4.0.1"
-bleak = ">=0.19.0"
+async-timeout = {version = ">=3.0.0", markers = "python_version < \"3.11\""}
+bleak = ">=1"
 bluetooth-adapters = {version = ">=0.15.2", markers = "platform_system == \"Linux\""}
 dbus-fast = {version = ">=1.14.0", markers = "platform_system == \"Linux\""}
-
-[package.extras]
-docs = ["Sphinx (>=5.0,<6.0)", "myst-parser (>=0.18,<0.19)", "sphinx-rtd-theme (>=1.0,<2.0)"]
 
 [[package]]
 name = "bluetooth-adapters"
@@ -1561,4 +1558,4 @@ docs = ["Sphinx", "myst-parser", "sphinx-rtd-theme"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.14"
-content-hash = "6b1c766894bdfcba81c5d2f363a35c841111759efb6c6e486ccf8d665af3c569"
+content-hash = "1bb67305cde574d4093673f365fc5ca4551a2d736f00ce84df28adb2d64a2dda"
