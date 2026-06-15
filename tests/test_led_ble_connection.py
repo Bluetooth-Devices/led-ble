@@ -15,7 +15,7 @@ from bleak_retry_connector import BleakNotFoundError
 
 from led_ble.const import STATE_COMMAND
 from led_ble.exceptions import CharacteristicMissingError
-from led_ble.led_ble import LEDBLE
+from led_ble.led_ble import LED_PASSWORD, LEDBLE
 
 # A model_num / version that resolves to a real flux_led protocol class.
 KNOWN_MODEL = 0xE3
@@ -236,12 +236,14 @@ def test_ensure_connected_happy_path(loop, led, monkeypatch):
     )
     led._resolve_characteristics = Mock(return_value=True)
     led._resolve_protocol = AsyncMock()
+    led._send_command_while_connected = AsyncMock()
     led._protocol = None
 
     loop.run_until_complete(led._ensure_connected())
     try:
         assert led._client is client
         client.start_notify.assert_awaited_once()
+        led._send_command_while_connected.assert_awaited_once_with([LED_PASSWORD])
         led._resolve_protocol.assert_awaited_once()
     finally:
         if led._disconnect_timer:
@@ -414,6 +416,7 @@ def test_ensure_connected_skips_protocol_resolve_when_already_set(
     )
     led._resolve_characteristics = Mock(return_value=True)
     led._resolve_protocol = AsyncMock()
+    led._authenticate = AsyncMock()
     led._protocol = Mock()  # already resolved from a prior connection
 
     loop.run_until_complete(led._ensure_connected())

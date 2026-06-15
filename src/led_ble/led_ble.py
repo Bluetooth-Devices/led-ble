@@ -51,6 +51,11 @@ DEFAULT_ATTEMPTS = 3
 DREAM_EFFECTS = {f"Effect {i + 1}": i for i in range(0, 255)}
 DREAM_EFFECT_LIST = list(DREAM_EFFECTS)
 
+# Factory-default password handshake ("1234"). Some controllers (e.g. QHM-*)
+# silently ignore control commands such as power on/off until it is sent, so it
+# is issued once per connection. It is a no-op on devices that do not require it.
+LED_PASSWORD = bytes((0xCF, 0x01, 0x02, 0x03, 0x04, 0xFC))
+
 
 class LEDBLE:
     def __init__(
@@ -381,6 +386,7 @@ class LEDBLE:
                 "%s: Subscribe to notifications; RSSI: %s", self.name, self.rssi
             )
             await client.start_notify(self._read_char, self._notification_handler)
+            await self._authenticate()
             if not self._protocol:
                 await self._resolve_protocol()
 
@@ -649,6 +655,10 @@ class LEDBLE:
                 self._write_char = char
                 break
         return bool(self._read_char and self._write_char)
+
+    async def _authenticate(self) -> None:
+        """Authenticate the session so the device accepts control commands."""
+        await self._send_command_while_connected([LED_PASSWORD])
 
     async def _resolve_protocol(self) -> None:
         """Resolve protocol."""
