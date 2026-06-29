@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from flux_led.const import COLOR_MODE_RGBW, COLOR_MODES_RGB_W
+from flux_led.const import COLOR_MODE_RGB, COLOR_MODE_RGBW, COLOR_MODES_RGB_W
 from flux_led.models_db import MinVersionProtocol
 from flux_led.protocol import PROTOCOL_LEDENET_ORIGINAL_RGBW
+
+from .govee import GOVEE_H6196_MODEL_NUM
 
 DEFAULT_MODEL = 0xE3
 
@@ -31,6 +33,15 @@ class LEDBLEModel:
 
 
 MODELS = [
+    LEDBLEModel(
+        model_num=GOVEE_H6196_MODEL_NUM,
+        models=["ihoment_H6196"],
+        description="Govee H6196 RGB Controller",
+        protocols=[
+            MinVersionProtocol(0, PROTOCOL_LEDENET_ORIGINAL_RGBW),
+        ],
+        color_modes={COLOR_MODE_RGB},
+    ),
     LEDBLEModel(
         model_num=0x04,
         models=["Triones:C10511000166"],
