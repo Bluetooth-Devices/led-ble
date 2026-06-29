@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable
 from typing import cast
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 from bleak.backends.service import BleakGATTServiceCollection
 import pytest
@@ -20,8 +20,10 @@ from led_ble.govee import (
     is_h6196_light_name,
 )
 from led_ble.led_ble import LEDBLE
+from led_ble.models import LEDBLEState
+from led_ble.native_protocol import NativeCommand
 
-from .conftest import FakeServices
+from .conftest import FakeAdvertisement, FakeServices
 
 
 def test_identifies_h6196_light_names() -> None:
@@ -69,6 +71,17 @@ def test_h6196_characteristics_are_known(make_led: Callable[..., LEDBLE]) -> Non
         UUID_GOVEE_H6196_NOTIFY_CHARACTERISTIC
         in led._native_protocol.read_characteristics
     )
+
+
+def test_h6196_can_be_detected_from_advertisement_name(
+    make_led: Callable[..., LEDBLE],
+) -> None:
+    led = make_led(
+        name=None,
+        advertisement=FakeAdvertisement(local_name="ihoment_H6196_F23C"),
+    )
+
+    assert led._native_protocol is not None
 
 
 def test_resolves_h6196_characteristics(make_led: Callable[..., LEDBLE]) -> None:
@@ -140,6 +153,29 @@ def test_h6196_set_brightness_uses_govee_packet(
     led._send_command.assert_awaited_once_with([build_h6196_brightness_packet(180)])
 
 
+def test_h6196_set_brightness_rejects_out_of_range(
+    loop: asyncio.AbstractEventLoop, make_led: Callable[..., LEDBLE]
+) -> None:
+    led = make_led(name="ihoment_H6196_F23C")
+
+    with pytest.raises(ValueError, match="outside the valid range"):
+        loop.run_until_complete(led.set_brightness(256))
+
+
+def test_h6196_set_brightness_scales_existing_color(
+    loop: asyncio.AbstractEventLoop, make_led: Callable[..., LEDBLE]
+) -> None:
+    led = make_led(name="ihoment_H6196_F23C")
+    led._send_command = AsyncMock()
+    led._state = LEDBLEState(rgb=(128, 0, 0))
+
+    loop.run_until_complete(led.set_brightness(64))
+
+    led._send_command.assert_awaited_once_with([build_h6196_brightness_packet(64)])
+    assert led.rgb == (64, 0, 0)
+    assert led.model_num == GOVEE_H6196_MODEL_NUM
+
+
 def test_h6196_set_white_uses_rgb_packet(
     loop: asyncio.AbstractEventLoop, make_led: Callable[..., LEDBLE]
 ) -> None:
@@ -173,6 +209,48 @@ def test_h6196_effects_are_not_supported(make_led: Callable[..., LEDBLE]) -> Non
 
     assert led.effect is None
     assert led.effect_list == []
+
+
+def test_h6196_ignores_unparsed_notifications(make_led: Callable[..., LEDBLE]) -> None:
+    led = make_led(name="ihoment_H6196_F23C")
+    received: list[LEDBLEState] = []
+    led.register_callback(received.append)
+    before = led.state
+
+    led._notification_handler(0, bytearray([0x01, 0x02, 0x03]))
+
+    assert led.state == before
+    assert received == []
+
+
+def test_h6196_applies_parsed_native_notifications(
+    make_led: Callable[..., LEDBLE],
+) -> None:
+    led = make_led(name="ihoment_H6196_F23C")
+    parsed = LEDBLEState(power=True, rgb=(10, 20, 30))
+    assert led._native_protocol is not None
+    led._native_protocol.parse_notification = Mock(return_value=parsed)
+    received: list[LEDBLEState] = []
+    led.register_callback(received.append)
+
+    led._notification_handler(0, bytearray([0x01, 0x02, 0x03]))
+
+    assert led.state == parsed
+    assert received == [parsed]
+
+
+def test_h6196_native_command_without_state_only_sends_command(
+    loop: asyncio.AbstractEventLoop, make_led: Callable[..., LEDBLE]
+) -> None:
+    led = make_led(name="ihoment_H6196_F23C")
+    led._send_command = AsyncMock()
+    received: list[LEDBLEState] = []
+    led.register_callback(received.append)
+
+    loop.run_until_complete(led._execute_native_command(NativeCommand((b"\x01",))))
+
+    led._send_command.assert_awaited_once_with([b"\x01"])
+    assert received == []
 
 
 def test_h6196_resolve_protocol_does_not_query_state(
