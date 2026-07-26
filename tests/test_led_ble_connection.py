@@ -424,6 +424,67 @@ def test_ensure_connected_skips_protocol_resolve_when_already_set(
             led._disconnect_timer.cancel()
 
 
+def test_execute_command_locked_raises_bleak_error_when_disconnected(
+    loop: asyncio.AbstractEventLoop, led: LEDBLE
+) -> None:
+    """A retry after the error path cleared the client must not assert."""
+    led._client = None
+    with pytest.raises(BleakError):
+        loop.run_until_complete(led._execute_command_locked([b"\x01"]))
+
+
+def test_ensure_connected_survives_failed_protocol_query(
+    loop: asyncio.AbstractEventLoop, led: LEDBLE, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A write failure during protocol resolution must propagate, not hang.
+
+    ``_resolve_protocol`` sends the state query, and a failed write disconnects
+    via ``_execute_disconnect``, which takes ``_connect_lock``.  Resolving under
+    that same (non-reentrant) lock deadlocks the device permanently.
+    """
+    monkeypatch.setattr(asyncio, "sleep", AsyncMock())
+    client = Mock()
+    client.is_connected = True
+    client.start_notify = AsyncMock()
+    client.services = Mock()
+    client.stop_notify = AsyncMock()
+    client.disconnect = AsyncMock()
+    client.write_gatt_char = AsyncMock(side_effect=BleakError("boom"))
+    monkeypatch.setattr(
+        "led_ble.led_ble.establish_connection", AsyncMock(return_value=client)
+    )
+
+    def _resolve(_services: object) -> bool:
+        led._read_char = Mock()
+        led._write_char = Mock()
+        return True
+
+    led._resolve_characteristics = Mock(side_effect=_resolve)
+
+    async def run() -> None:
+        await asyncio.wait_for(led._ensure_connected(), timeout=5)
+
+    with pytest.raises(BleakError):
+        loop.run_until_complete(run())
+
+    # The lock is free, so the device is still usable for a later retry.
+    assert not led._connect_lock.locked()
+
+
+def test_execute_disconnect_cancels_disconnect_timer(
+    loop: asyncio.AbstractEventLoop, led: LEDBLE
+) -> None:
+    """Tearing down must disarm the idle timer, not leave it to fire later."""
+    led._reset_disconnect_timer()
+    timer = led._disconnect_timer
+    assert timer is not None
+
+    loop.run_until_complete(led._execute_disconnect())
+
+    assert timer.cancelled()
+    assert led._disconnect_timer is None
+
+
 def test_execute_disconnect_without_read_char_skips_stop_notify(
     loop: asyncio.AbstractEventLoop, led: LEDBLE
 ) -> None:

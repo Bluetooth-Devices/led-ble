@@ -381,8 +381,12 @@ class LEDBLE:
                 "%s: Subscribe to notifications; RSSI: %s", self.name, self.rssi
             )
             await client.start_notify(self._read_char, self._notification_handler)
-            if not self._protocol:
-                await self._resolve_protocol()
+
+        # Resolve outside the connect lock: _resolve_protocol writes the state
+        # query, and a failed write disconnects via _execute_disconnect(), which
+        # needs this same non-reentrant lock.
+        if not self._protocol:
+            await self._resolve_protocol()
 
     @property
     def model_num(self) -> int:
@@ -535,6 +539,9 @@ class LEDBLE:
     async def _execute_disconnect(self) -> None:
         """Execute disconnection."""
         async with self._connect_lock:
+            if self._disconnect_timer:
+                self._disconnect_timer.cancel()
+                self._disconnect_timer = None
             read_char = self._read_char
             client = self._client
             self._expected_disconnect = True
@@ -626,7 +633,10 @@ class LEDBLE:
 
     async def _execute_command_locked(self, commands: list[bytes]) -> None:
         """Execute command and read response."""
-        assert self._client is not None  # nosec
+        if self._client is None:
+            # The error path of a previous attempt disconnected us; surface a
+            # BLE error the caller can handle rather than an AssertionError.
+            raise BleakError("Not connected")
         if not self._read_char:
             raise CharacteristicMissingError("Read characteristic missing")
         if not self._write_char:
