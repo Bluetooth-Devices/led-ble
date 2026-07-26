@@ -452,6 +452,7 @@ class LEDBLE:
         if len(data) == 4 and data[0] == 0xCC:
             on = data[1] == 0x23
             self._state = replace(self._state, power=on)
+            self._fire_callbacks()
             return
         if len(data) < 11:
             return
