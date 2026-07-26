@@ -22,6 +22,8 @@ class LEDBLEModel:
     ]  # The color modes to use if there is no mode_to_color_mode_mapping
 
     def protocol_for_version_num(self, version_num: int) -> str:
+        if not self.protocols:
+            raise ValueError("Native models do not have a Flux LED protocol")
         protocol = self.protocols[-1].protocol
         for min_version_protocol in self.protocols:
             if version_num >= min_version_protocol.min_version:

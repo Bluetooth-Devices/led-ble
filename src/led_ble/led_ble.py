@@ -26,6 +26,7 @@ from flux_led.utils import rgbw_brightness
 
 from led_ble.model_db import LEDBLEModel
 
+from .color import calculate_brightness, rgb_unscaled
 from .const import (
     POSSIBLE_READ_CHARACTERISTIC_UUIDS,
     POSSIBLE_WRITE_CHARACTERISTIC_UUIDS,
@@ -34,6 +35,7 @@ from .const import (
 from .exceptions import CharacteristicMissingError
 from .model_db import get_model
 from .models import LEDBLEState
+from .native_protocol import NativeCommand, NativeProtocol, native_protocol_for_device
 from .util import asyncio_timeout
 
 BLEAK_BACKOFF_TIME = 0.25
@@ -72,14 +74,21 @@ class LEDBLE:
         self._callbacks: list[Callable[[LEDBLEState], None]] = []
         self._model_data: LEDBLEModel | None = None
         self._protocol: PROTOCOL_TYPES | None = None
+        self._native_protocol: NativeProtocol | None = native_protocol_for_device(
+            ble_device, advertisement_data
+        )
         self._resolve_protocol_event = asyncio.Event()
 
     def set_ble_device_and_advertisement_data(
-        self, ble_device: BLEDevice, advertisement_data: AdvertisementData
+        self, ble_device: BLEDevice, advertisement_data: AdvertisementData | None
     ) -> None:
         """Set the ble device."""
         self._ble_device = ble_device
         self._advertisement_data = advertisement_data
+        if self._native_protocol is None:
+            self._native_protocol = native_protocol_for_device(
+                ble_device, advertisement_data
+            )
 
     @property
     def address(self) -> str:
@@ -125,10 +134,7 @@ class LEDBLE:
     @property
     def rgb_unscaled(self) -> tuple[int, int, int]:
         """Return the unscaled RGB."""
-        r, g, b = self.rgb
-        hsv = colorsys.rgb_to_hsv(r / 255.0, g / 255.0, b / 255.0)
-        r_p, g_p, b_p = colorsys.hsv_to_rgb(hsv[0], hsv[1], 1)
-        return round(r_p * 255), round(g_p * 255), round(b_p * 255)
+        return rgb_unscaled(self.rgb)
 
     @property
     def on(self) -> bool:
@@ -147,6 +153,11 @@ class LEDBLE:
         """Update the LEDBLE."""
         await self._ensure_connected()
         await self._resolve_protocol()
+        if self._native_protocol:
+            await self._execute_native_command(
+                self._native_protocol.update(self._state)
+            )
+            return
         _LOGGER.debug("%s: Updating", self.name)
         assert self._protocol is not None  # nosec
         command = self._protocol.construct_state_query()
@@ -155,6 +166,11 @@ class LEDBLE:
     async def turn_on(self) -> None:
         """Turn on."""
         _LOGGER.debug("%s: Turn on", self.name)
+        if self._native_protocol:
+            await self._execute_native_command(
+                self._native_protocol.set_power(self._state, True)
+            )
+            return
         assert self._protocol is not None  # nosec
         await self._send_command(self._protocol.construct_state_change(True))
         self._state = replace(self._state, power=True)
@@ -163,6 +179,11 @@ class LEDBLE:
     async def turn_off(self) -> None:
         """Turn off."""
         _LOGGER.debug("%s: Turn off", self.name)
+        if self._native_protocol:
+            await self._execute_native_command(
+                self._native_protocol.set_power(self._state, False)
+            )
+            return
         assert self._protocol is not None  # nosec
         await self._send_command(self._protocol.construct_state_change(False))
         self._state = replace(self._state, power=False)
@@ -171,6 +192,13 @@ class LEDBLE:
     async def set_brightness(self, brightness: int) -> None:
         """Set the brightness."""
         _LOGGER.debug("%s: Set brightness: %s", self.name, brightness)
+        if not 0 <= brightness <= 255:
+            raise ValueError(f"Value {brightness} is outside the valid range of 0-255")
+        if self._native_protocol:
+            await self._execute_native_command(
+                self._native_protocol.set_brightness(self._state, brightness)
+            )
+            return
         effect = self.effect
         if effect:
             effect_brightness = round(brightness / 255 * 100)
@@ -192,6 +220,11 @@ class LEDBLE:
         if brightness is not None:
             rgb = self._calculate_brightness(rgb, brightness)
         _LOGGER.debug("%s: Set rgb after brightness: %s", self.name, rgb)
+        if self._native_protocol:
+            await self._execute_native_command(
+                self._native_protocol.set_rgb(self._state, rgb)
+            )
+            return
         assert self._protocol is not None  # nosec
         r, g, b = rgb
         command = self._protocol.construct_levels_change(
@@ -220,6 +253,14 @@ class LEDBLE:
         for value in rgbw:
             if not 0 <= value <= 255:
                 raise ValueError(f"Value {value} is outside the valid range of 0-255")
+        if self._native_protocol:
+            native_rgbw = (
+                rgbw_brightness(rgbw, brightness) if brightness is not None else rgbw
+            )
+            await self._execute_native_command(
+                self._native_protocol.set_rgbw(self._state, native_rgbw)
+            )
+            return
         r, g, b, w = rgbw_brightness(rgbw, brightness)
         _LOGGER.debug("%s: Set rgbw after brightness: %s", self.name, rgbw)
         assert self._protocol is not None  # nosec
@@ -248,6 +289,11 @@ class LEDBLE:
         _LOGGER.debug("%s: Set white: %s", self.name, brightness)
         if not 0 <= brightness <= 255:
             raise ValueError(f"Value {brightness} is outside the valid range of 0-255")
+        if self._native_protocol:
+            await self._execute_native_command(
+                self._native_protocol.set_white(self._state, brightness)
+            )
+            return
         assert self._protocol is not None  # nosec
 
         command = self._protocol.construct_levels_change(
@@ -313,14 +359,20 @@ class LEDBLE:
     def _calculate_brightness(
         self, rgb: tuple[int, int, int], level: int
     ) -> tuple[int, int, int]:
-        hsv = colorsys.rgb_to_hsv(*rgb)
-        r, g, b = colorsys.hsv_to_rgb(hsv[0], hsv[1], level)
-        return int(r), int(g), int(b)
+        return calculate_brightness(rgb, level)
 
     def _fire_callbacks(self) -> None:
         """Fire the callbacks."""
         for callback in self._callbacks:
             callback(self._state)
+
+    async def _execute_native_command(self, command: NativeCommand) -> None:
+        """Execute a native protocol command and apply optimistic state."""
+        if command.commands:
+            await self._send_command(list(command.commands))
+        if command.state is not None:
+            self._state = command.state
+            self._fire_callbacks()
 
     def register_callback(
         self, callback: Callable[[LEDBLEState], None]
@@ -380,8 +432,9 @@ class LEDBLE:
             _LOGGER.debug(
                 "%s: Subscribe to notifications; RSSI: %s", self.name, self.rssi
             )
-            await client.start_notify(self._read_char, self._notification_handler)
-            if not self._protocol:
+            if self._read_char:
+                await client.start_notify(self._read_char, self._notification_handler)
+            if not self._protocol and not self._native_protocol:
                 await self._resolve_protocol()
 
     @property
@@ -420,6 +473,8 @@ class LEDBLE:
     @property
     def effect_list(self) -> list[str]:
         """Return the list of available effects."""
+        if self._native_protocol:
+            return self._native_protocol.effect_list
         if self.dream:
             return DREAM_EFFECT_LIST
         return EFFECT_LIST
@@ -436,6 +491,8 @@ class LEDBLE:
     @property
     def effect(self) -> str | None:
         """Return the current effect."""
+        if self._native_protocol:
+            return self._native_protocol.effect
         if self.dream and self.preset_pattern_num == 0:
             return f"Effect {self.mode + 1}"
         return self._named_effect
@@ -448,6 +505,12 @@ class LEDBLE:
     def _notification_handler(self, _sender: int, data: bytearray) -> None:
         """Handle notification responses."""
         _LOGGER.debug("%s: Notification received: %s", self.name, data.hex())
+
+        if self._native_protocol:
+            if state := self._native_protocol.parse_notification(self._state, data):
+                self._state = state
+                self._fire_callbacks()
+            return
 
         if len(data) == 4 and data[0] == 0xCC:
             on = data[1] == 0x23
@@ -627,7 +690,7 @@ class LEDBLE:
     async def _execute_command_locked(self, commands: list[bytes]) -> None:
         """Execute command and read response."""
         assert self._client is not None  # nosec
-        if not self._read_char:
+        if not self._native_protocol and not self._read_char:
             raise CharacteristicMissingError("Read characteristic missing")
         if not self._write_char:
             raise CharacteristicMissingError("Write characteristic missing")
@@ -640,19 +703,36 @@ class LEDBLE:
         # attempt can't satisfy the read-and-write check with stale objects.
         self._read_char = None
         self._write_char = None
-        for characteristic in POSSIBLE_READ_CHARACTERISTIC_UUIDS:
+        read_characteristics = (
+            self._native_protocol.read_characteristics
+            if self._native_protocol
+            else POSSIBLE_READ_CHARACTERISTIC_UUIDS
+        )
+        write_characteristics = (
+            self._native_protocol.write_characteristics
+            if self._native_protocol
+            else POSSIBLE_WRITE_CHARACTERISTIC_UUIDS
+        )
+        for characteristic in read_characteristics:
             if char := services.get_characteristic(characteristic):
                 self._read_char = char
                 break
-        for characteristic in POSSIBLE_WRITE_CHARACTERISTIC_UUIDS:
+        for characteristic in write_characteristics:
             if char := services.get_characteristic(characteristic):
                 self._write_char = char
                 break
+        if self._native_protocol:
+            return self._write_char is not None
         return bool(self._read_char and self._write_char)
 
     async def _resolve_protocol(self) -> None:
         """Resolve protocol."""
         if self._resolve_protocol_event.is_set():
+            return
+        if self._native_protocol:
+            self._model_data = self._native_protocol.model_data
+            self._state = self._native_protocol.initial_state(self._state)
+            self._resolve_protocol_event.set()
             return
         await self._send_command_while_connected([STATE_COMMAND])
         async with asyncio_timeout(10):
