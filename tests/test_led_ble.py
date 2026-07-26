@@ -20,7 +20,7 @@ from led_ble.const import (
     POSSIBLE_WRITE_CHARACTERISTIC_UUIDS,
 )
 from led_ble.exceptions import CharacteristicMissingError
-from led_ble.led_ble import DREAM_EFFECT_LIST, DREAM_EFFECTS
+from led_ble.led_ble import DREAM_EFFECT_LIST, DREAM_EFFECTS, LEDBLE
 
 from .conftest import FakeAdvertisement, FakeBLEDevice, FakeServices
 
@@ -38,7 +38,7 @@ def _protocol_mock() -> Mock:
     return protocol
 
 
-def _stub_connected(led) -> Mock:
+def _stub_connected(led: LEDBLE) -> Mock:
     """Present a device that is already connected with a resolved protocol."""
     led._protocol = _protocol_mock()
     led._resolve_protocol_event.set()

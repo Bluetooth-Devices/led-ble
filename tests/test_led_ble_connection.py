@@ -456,8 +456,8 @@ def _connect_on_demand(led: LEDBLE) -> AsyncMock:
         led._set_protocol("LEDENET_ORIGINAL_RGBW")
 
     mock = AsyncMock(side_effect=_connect)
-    led._ensure_connected = mock  # type: ignore[method-assign]
-    led._send_command_while_connected = AsyncMock()  # type: ignore[method-assign]
+    led._ensure_connected = mock
+    led._send_command_while_connected = AsyncMock()
     return mock
 
 
