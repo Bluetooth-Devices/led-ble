@@ -426,6 +426,49 @@ def test_set_white_rejects_out_of_range(loop, led):
     led._send_command.assert_not_awaited()
 
 
+def test_color_writes_clear_the_active_effect(loop, led):
+    """Writing a solid color leaves effect mode; the reported state must too.
+
+    The optimistic update is what consumers see between notifications, so a
+    stale ``preset_pattern`` makes ``effect`` keep naming the effect the device
+    has already left.
+    """
+    effect_id = next(iter(EFFECT_ID_NAME))
+    for write in (
+        lambda: led.set_rgb((10, 20, 30)),
+        lambda: led.set_rgbw((10, 20, 30, 40)),
+        lambda: led.set_white(200),
+    ):
+        seen: list[LEDBLEState] = []
+        led._state = replace(led._state, preset_pattern=effect_id)
+        led._protocol = _protocol_mock()
+        led._send_command = AsyncMock()
+        led.register_callback(seen.append)
+        loop.run_until_complete(write())
+        assert seen[-1].preset_pattern != effect_id
+        assert led.effect is None
+
+
+def test_set_brightness_after_color_write_dims_the_color(loop, led):
+    """A brightness change must not resurrect the effect the color replaced."""
+    led._state = replace(led._state, preset_pattern=next(iter(EFFECT_ID_NAME)))
+    led._protocol = _protocol_mock()
+    led._send_command = AsyncMock()
+    loop.run_until_complete(led.set_rgb((255, 0, 0)))
+    loop.run_until_complete(led.set_brightness(64))
+    led._protocol.construct_preset_pattern.assert_not_called()
+    assert led._protocol.construct_levels_change.call_count == 2
+
+
+def test_dream_color_write_clears_the_active_effect(loop, led):
+    """Dream devices report an effect via ``preset_pattern == 0``."""
+    led._state = replace(led._state, model_num=0x10, preset_pattern=0, mode=4)
+    led._protocol = _protocol_mock()
+    led._send_command = AsyncMock()
+    loop.run_until_complete(led.set_rgb((10, 20, 30)))
+    assert led.effect is None
+
+
 def test_set_brightness_uses_white_path(loop, led):
     led._state = replace(led._state, w=100)
     led.set_white = AsyncMock()

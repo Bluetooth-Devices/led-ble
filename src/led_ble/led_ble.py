@@ -51,6 +51,12 @@ DEFAULT_ATTEMPTS = 3
 DREAM_EFFECTS = {f"Effect {i + 1}": i for i in range(0, 255)}
 DREAM_EFFECT_LIST = list(DREAM_EFFECTS)
 
+# The pattern code a device reports once it is showing a solid color instead of
+# an effect (flux_led maps 0x61 to MODE_COLOR). Dream devices signal the same
+# thing with any non-zero pattern, since zero is what puts them in effect mode.
+COLOR_MODE_PATTERN = 0x61
+DREAM_COLOR_MODE_PATTERN = 1
+
 
 class LEDBLE:
     def __init__(
@@ -208,7 +214,7 @@ class LEDBLE:
             self._state,
             rgb=rgb,
             w=0,
-            preset_pattern=1 if self.dream else self.preset_pattern_num,
+            preset_pattern=self._color_mode_pattern,
         )
         self._fire_callbacks()
 
@@ -239,7 +245,7 @@ class LEDBLE:
             self._state,
             rgb=(rgbw[0], rgbw[1], rgbw[2]),
             w=rgbw[3],
-            preset_pattern=1 if self.dream else self.preset_pattern_num,
+            preset_pattern=self._color_mode_pattern,
         )
         self._fire_callbacks()
 
@@ -264,7 +270,7 @@ class LEDBLE:
             self._state,
             rgb=(0, 0, 0),
             w=brightness,
-            preset_pattern=1 if self.dream else self.preset_pattern_num,
+            preset_pattern=self._color_mode_pattern,
         )
         self._fire_callbacks()
 
@@ -432,6 +438,11 @@ class LEDBLE:
             and self._advertisement_data.local_name is not None
             and self._advertisement_data.local_name.startswith("Dream")
         )
+
+    @property
+    def _color_mode_pattern(self) -> int:
+        """Return the pattern code that means "showing a solid color"."""
+        return DREAM_COLOR_MODE_PATTERN if self.dream else COLOR_MODE_PATTERN
 
     @property
     def effect(self) -> str | None:
