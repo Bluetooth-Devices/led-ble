@@ -32,6 +32,23 @@
 
 Control a wide range of LED BLE devices
 
+## What this library is
+
+This library controls generic, unbranded Bluetooth LE LED controllers and
+bulbs that share the same family of protocols. These devices are sold under
+many names and typically advertise names such as `Triones:`, `LEDBLE-`,
+`LEDBlue-`, `QHM-`, and `Dream~`.
+
+## What this library is not
+
+This library is not a universal driver for every Bluetooth LE light.
+Brand-specific ecosystems such as Govee use their own protocols and span
+hundreds of models with complex, per-model options. Supporting them here
+would mean maintaining what is effectively a separate driver inside this
+one, so they should live in their own dedicated libraries. The same applies
+to devices that speak an entirely different protocol, such as yeelight-bt
+or ALLOYSEED lights.
+
 ## Installation
 
 Install this via pip (or your favourite package manager):
