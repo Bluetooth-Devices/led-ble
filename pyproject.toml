@@ -32,7 +32,7 @@ python = ">=3.10,<3.14"
 # Documentation Dependencies
 Sphinx = {version = ">=5,<8", optional = true}
 sphinx-rtd-theme = {version = ">=1,<4", optional = true}
-myst-parser = {version = ">=0.18,<3.1", optional = true}
+myst-parser = {version = ">=4.0.1,<4.1", optional = true}
 bleak-retry-connector = ">=2.3.0"
 bleak = ">=0.22.0"
 async-timeout = {version = ">=5.0.1", python = "<3.11"}
