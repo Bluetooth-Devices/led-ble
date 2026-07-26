@@ -48,7 +48,10 @@ _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_ATTEMPTS = 3
 
-DREAM_EFFECTS = {f"Effect {i + 1}": i for i in range(0, 255)}
+# A dream device reports its effect in a single state byte, so every value in
+# 0-255 is reachable; the map must cover all of them or `effect` can name an
+# effect that `effect_list` and `_effect_to_pattern` both reject.
+DREAM_EFFECTS = {f"Effect {i + 1}": i for i in range(256)}
 DREAM_EFFECT_LIST = list(DREAM_EFFECTS)
 
 
@@ -173,7 +176,9 @@ class LEDBLE:
         _LOGGER.debug("%s: Set brightness: %s", self.name, brightness)
         effect = self.effect
         if effect:
-            effect_brightness = round(brightness / 255 * 100)
+            # Effects take brightness as a percentage with a floor of 1, so the
+            # bottom of the 0-255 scale must clamp rather than round down to 0.
+            effect_brightness = max(1, round(brightness / 255 * 100))
             await self.async_set_effect(effect, self.speed, effect_brightness)
             return
         if self.w:
