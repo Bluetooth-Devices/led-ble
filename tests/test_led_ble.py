@@ -20,7 +20,7 @@ from led_ble.const import (
     POSSIBLE_WRITE_CHARACTERISTIC_UUIDS,
 )
 from led_ble.exceptions import CharacteristicMissingError
-from led_ble.led_ble import DREAM_EFFECT_LIST, DREAM_EFFECTS
+from led_ble.led_ble import DREAM_EFFECT_LIST, DREAM_EFFECTS, LEDBLE
 
 from .conftest import FakeAdvertisement, FakeBLEDevice, FakeServices
 
@@ -36,6 +36,14 @@ def _protocol_mock() -> Mock:
     protocol.construct_state_query.return_value = b"\x03"
     protocol.construct_preset_pattern.return_value = bytearray(b"\x04")
     return protocol
+
+
+def _stub_connected(led: LEDBLE) -> Mock:
+    """Present a device that is already connected with a resolved protocol."""
+    led._protocol = _protocol_mock()
+    led._resolve_protocol_event.set()
+    led._ensure_connected = AsyncMock()
+    return led._protocol
 
 
 # ---------------------------------------------------------------------------
@@ -360,7 +368,7 @@ def test_generate_preset_pattern_dream(led):
 
 
 def test_turn_on(loop, led):
-    led._protocol = _protocol_mock()
+    _stub_connected(led)
     led._send_command = AsyncMock()
     loop.run_until_complete(led.turn_on())
     assert led.on is True
@@ -369,14 +377,14 @@ def test_turn_on(loop, led):
 
 def test_turn_off(loop, led):
     led._state = replace(led._state, power=True)
-    led._protocol = _protocol_mock()
+    _stub_connected(led)
     led._send_command = AsyncMock()
     loop.run_until_complete(led.turn_off())
     assert led.on is False
 
 
 def test_set_rgb_updates_state(loop, led):
-    led._protocol = _protocol_mock()
+    _stub_connected(led)
     led._send_command = AsyncMock()
     loop.run_until_complete(led.set_rgb((10, 20, 30)))
     assert led.rgb == (10, 20, 30)
@@ -395,7 +403,7 @@ def test_set_rgb_rejects_out_of_range(loop, led):
 
 
 def test_set_rgbw_updates_state(loop, led):
-    led._protocol = _protocol_mock()
+    _stub_connected(led)
     led._send_command = AsyncMock()
     loop.run_until_complete(led.set_rgbw((10, 20, 30, 40)))
     assert led.rgb == (10, 20, 30)
@@ -411,7 +419,7 @@ def test_set_rgbw_rejects_out_of_range(loop, led):
 
 
 def test_set_white_updates_state(loop, led):
-    led._protocol = _protocol_mock()
+    _stub_connected(led)
     led._send_command = AsyncMock()
     loop.run_until_complete(led.set_white(200))
     assert led.w == 200
@@ -448,6 +456,7 @@ def test_set_brightness_uses_effect_path(loop, led):
 
 
 def test_async_set_preset_pattern_normal_state(loop, led):
+    _stub_connected(led)
     led._send_command = AsyncMock()
     led._generate_preset_pattern = Mock(return_value=bytearray(b"\x04"))
     loop.run_until_complete(led.async_set_preset_pattern(37, 50, 100))
@@ -456,6 +465,7 @@ def test_async_set_preset_pattern_normal_state(loop, led):
 
 def test_async_set_preset_pattern_dream_state(loop, led):
     led._state = replace(led._state, model_num=0x10)
+    _stub_connected(led)
     led._send_command = AsyncMock()
     led._generate_preset_pattern = Mock(return_value=bytearray(b"\x04"))
     loop.run_until_complete(led.async_set_preset_pattern(7, 50, 100))
