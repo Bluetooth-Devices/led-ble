@@ -154,7 +154,7 @@ def test_effect_list_normal(led):
 def test_effect_list_dream(led):
     led._state = replace(led._state, model_num=0x10)
     assert led.effect_list == DREAM_EFFECT_LIST
-    assert len(DREAM_EFFECT_LIST) == 255
+    assert len(DREAM_EFFECT_LIST) == 256
 
 
 def test_effect_named_for_known_preset(led):
@@ -187,6 +187,15 @@ def test_effect_to_pattern_dream_invalid_raises(led):
     led._state = replace(led._state, model_num=0x10)
     with pytest.raises(ValueError, match="not valid"):
         led._effect_to_pattern("Nope")
+
+
+@pytest.mark.parametrize("mode", [0, 128, 254, 255])
+def test_effect_dream_round_trips_every_mode_byte(led, mode):
+    """Every value the device can report in the mode byte must round-trip."""
+    led._state = replace(led._state, model_num=0x10, preset_pattern=0, mode=mode)
+    name = led.effect
+    assert name in led.effect_list
+    assert led._effect_to_pattern(name) == mode
 
 
 # ---------------------------------------------------------------------------
@@ -445,6 +454,17 @@ def test_set_brightness_uses_effect_path(loop, led):
     led.async_set_effect = AsyncMock()
     loop.run_until_complete(led.set_brightness(255))
     led.async_set_effect.assert_awaited_once()
+
+
+@pytest.mark.parametrize("brightness", [1, 2, 3])
+def test_set_brightness_effect_path_clamps_to_valid_percent(loop, led, brightness):
+    """The bottom of the 0-255 scale must not round down to an invalid 0%."""
+    led._state = replace(led._state, w=0, preset_pattern=next(iter(EFFECT_ID_NAME)))
+    led._protocol = _protocol_mock()
+    led._send_command = AsyncMock()
+    loop.run_until_complete(led.set_brightness(brightness))
+    led._protocol.construct_preset_pattern.assert_called_once()
+    assert led._protocol.construct_preset_pattern.call_args.args[2] >= 1
 
 
 def test_async_set_preset_pattern_normal_state(loop, led):
