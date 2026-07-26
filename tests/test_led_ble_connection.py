@@ -237,6 +237,7 @@ def test_ensure_connected_happy_path(loop, led, monkeypatch):
     led._resolve_characteristics = Mock(return_value=True)
     led._resolve_protocol = AsyncMock()
     led._protocol = None
+    led._read_char = Mock()
 
     loop.run_until_complete(led._ensure_connected())
     try:

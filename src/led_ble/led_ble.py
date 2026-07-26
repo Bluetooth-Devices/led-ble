@@ -26,6 +26,7 @@ from flux_led.utils import rgbw_brightness
 
 from led_ble.model_db import LEDBLEModel
 
+from .color import calculate_brightness, rgb_unscaled
 from .const import (
     POSSIBLE_READ_CHARACTERISTIC_UUIDS,
     POSSIBLE_WRITE_CHARACTERISTIC_UUIDS,
@@ -79,14 +80,15 @@ class LEDBLE:
         self._resolve_protocol_event = asyncio.Event()
 
     def set_ble_device_and_advertisement_data(
-        self, ble_device: BLEDevice, advertisement_data: AdvertisementData
+        self, ble_device: BLEDevice, advertisement_data: AdvertisementData | None
     ) -> None:
         """Set the ble device."""
         self._ble_device = ble_device
         self._advertisement_data = advertisement_data
-        self._native_protocol = native_protocol_for_device(
-            ble_device, advertisement_data
-        )
+        if self._native_protocol is None:
+            self._native_protocol = native_protocol_for_device(
+                ble_device, advertisement_data
+            )
 
     @property
     def address(self) -> str:
@@ -132,10 +134,7 @@ class LEDBLE:
     @property
     def rgb_unscaled(self) -> tuple[int, int, int]:
         """Return the unscaled RGB."""
-        r, g, b = self.rgb
-        hsv = colorsys.rgb_to_hsv(r / 255.0, g / 255.0, b / 255.0)
-        r_p, g_p, b_p = colorsys.hsv_to_rgb(hsv[0], hsv[1], 1)
-        return round(r_p * 255), round(g_p * 255), round(b_p * 255)
+        return rgb_unscaled(self.rgb)
 
     @property
     def on(self) -> bool:
@@ -360,9 +359,7 @@ class LEDBLE:
     def _calculate_brightness(
         self, rgb: tuple[int, int, int], level: int
     ) -> tuple[int, int, int]:
-        hsv = colorsys.rgb_to_hsv(*rgb)
-        r, g, b = colorsys.hsv_to_rgb(hsv[0], hsv[1], level)
-        return int(r), int(g), int(b)
+        return calculate_brightness(rgb, level)
 
     def _fire_callbacks(self) -> None:
         """Fire the callbacks."""
@@ -435,7 +432,8 @@ class LEDBLE:
             _LOGGER.debug(
                 "%s: Subscribe to notifications; RSSI: %s", self.name, self.rssi
             )
-            await client.start_notify(self._read_char, self._notification_handler)
+            if self._read_char:
+                await client.start_notify(self._read_char, self._notification_handler)
             if not self._protocol and not self._native_protocol:
                 await self._resolve_protocol()
 
@@ -692,7 +690,7 @@ class LEDBLE:
     async def _execute_command_locked(self, commands: list[bytes]) -> None:
         """Execute command and read response."""
         assert self._client is not None  # nosec
-        if not self._read_char:
+        if not self._native_protocol and not self._read_char:
             raise CharacteristicMissingError("Read characteristic missing")
         if not self._write_char:
             raise CharacteristicMissingError("Write characteristic missing")
@@ -723,6 +721,8 @@ class LEDBLE:
             if char := services.get_characteristic(characteristic):
                 self._write_char = char
                 break
+        if self._native_protocol:
+            return self._write_char is not None
         return bool(self._read_char and self._write_char)
 
     async def _resolve_protocol(self) -> None:

@@ -1,24 +1,32 @@
 from __future__ import annotations
 
-import colorsys
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from typing import Protocol
 
 from bleak.backends.device import BLEDevice
 from bleak.backends.scanner import AdvertisementData
+from flux_led.const import COLOR_MODE_RGB
 
+from .color import calculate_brightness, rgb_unscaled
 from .govee import (
     GOVEE_H6196_MODEL_NUM,
     UUID_GOVEE_H6196_CONTROL_CHARACTERISTIC,
-    UUID_GOVEE_H6196_NOTIFY_CHARACTERISTIC,
     build_h6196_brightness_packet,
     build_h6196_power_packet,
     build_h6196_rgb_packet,
     is_h6196_light_name,
 )
-from .model_db import LEDBLEModel, get_model
+from .model_db import LEDBLEModel
 from .models import LEDBLEState
+
+H6196_MODEL_DATA = LEDBLEModel(
+    model_num=GOVEE_H6196_MODEL_NUM,
+    models=["ihoment_H6196"],
+    description="Govee H6196 RGB Controller",
+    protocols=[],
+    color_modes={COLOR_MODE_RGB},
+)
 
 
 @dataclass(frozen=True)
@@ -76,8 +84,8 @@ class NativeProtocol(Protocol):
 class GoveeH6196Protocol:
     """Native protocol support for Govee H6196/iHoment BLE light strips."""
 
-    model_data: LEDBLEModel = get_model(GOVEE_H6196_MODEL_NUM)
-    read_characteristics: Sequence[str] = (UUID_GOVEE_H6196_NOTIFY_CHARACTERISTIC,)
+    model_data: LEDBLEModel = H6196_MODEL_DATA
+    read_characteristics: Sequence[str] = ()
     write_characteristics: Sequence[str] = (UUID_GOVEE_H6196_CONTROL_CHARACTERISTIC,)
 
     def initial_state(self, state: LEDBLEState) -> LEDBLEState:
@@ -99,12 +107,11 @@ class GoveeH6196Protocol:
     def set_brightness(self, state: LEDBLEState, brightness: int) -> NativeCommand:
         """Return a brightness command."""
         initial_state = self.initial_state(state)
-        new_state = initial_state
-        if state.rgb != (0, 0, 0):
-            new_state = replace(
-                initial_state,
-                rgb=_calculate_brightness(_rgb_unscaled(state.rgb), brightness),
-            )
+        rgb = rgb_unscaled(state.rgb) if any(state.rgb) else (255, 255, 255)
+        new_state = replace(
+            initial_state,
+            rgb=calculate_brightness(rgb, brightness),
+        )
         return NativeCommand((build_h6196_brightness_packet(brightness),), new_state)
 
     def set_rgb(self, state: LEDBLEState, rgb: tuple[int, int, int]) -> NativeCommand:
@@ -151,19 +158,3 @@ def native_protocol_for_device(
     if is_h6196_light_name(ble_device.name) or is_h6196_light_name(advertisement_name):
         return GoveeH6196Protocol()
     return None
-
-
-def _rgb_unscaled(rgb: tuple[int, int, int]) -> tuple[int, int, int]:
-    """Return RGB scaled up to full value."""
-    r, g, b = rgb
-    hsv = colorsys.rgb_to_hsv(r / 255.0, g / 255.0, b / 255.0)
-    r_p, g_p, b_p = colorsys.hsv_to_rgb(hsv[0], hsv[1], 1)
-    return round(r_p * 255), round(g_p * 255), round(b_p * 255)
-
-
-def _calculate_brightness(
-    rgb: tuple[int, int, int], level: int
-) -> tuple[int, int, int]:
-    hsv = colorsys.rgb_to_hsv(*rgb)
-    r, g, b = colorsys.hsv_to_rgb(hsv[0], hsv[1], level)
-    return int(r), int(g), int(b)

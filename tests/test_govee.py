@@ -5,13 +5,13 @@ from collections.abc import Callable
 from typing import cast
 from unittest.mock import AsyncMock, Mock
 
+from bleak.backends.device import BLEDevice
 from bleak.backends.service import BleakGATTServiceCollection
 import pytest
 
 from led_ble.govee import (
     GOVEE_H6196_MODEL_NUM,
     UUID_GOVEE_H6196_CONTROL_CHARACTERISTIC,
-    UUID_GOVEE_H6196_NOTIFY_CHARACTERISTIC,
     GoveeH6196Command,
     build_h6196_brightness_packet,
     build_h6196_packet,
@@ -21,9 +21,9 @@ from led_ble.govee import (
 )
 from led_ble.led_ble import LEDBLE
 from led_ble.models import LEDBLEState
-from led_ble.native_protocol import NativeCommand
+from led_ble.native_protocol import H6196_MODEL_DATA, NativeCommand
 
-from .conftest import FakeAdvertisement, FakeServices
+from .conftest import FakeAdvertisement, FakeBLEDevice, FakeServices
 
 
 def test_identifies_h6196_light_names() -> None:
@@ -67,10 +67,7 @@ def test_h6196_characteristics_are_known(make_led: Callable[..., LEDBLE]) -> Non
         UUID_GOVEE_H6196_CONTROL_CHARACTERISTIC
         in led._native_protocol.write_characteristics
     )
-    assert (
-        UUID_GOVEE_H6196_NOTIFY_CHARACTERISTIC
-        in led._native_protocol.read_characteristics
-    )
+    assert led._native_protocol.read_characteristics == ()
 
 
 def test_h6196_can_be_detected_from_advertisement_name(
@@ -87,17 +84,15 @@ def test_h6196_can_be_detected_from_advertisement_name(
 def test_resolves_h6196_characteristics(make_led: Callable[..., LEDBLE]) -> None:
     led = make_led(name="ihoment_H6196_F23C")
     write_char = object()
-    read_char = object()
     services = FakeServices(
         {
             UUID_GOVEE_H6196_CONTROL_CHARACTERISTIC: write_char,
-            UUID_GOVEE_H6196_NOTIFY_CHARACTERISTIC: read_char,
         }
     )
 
     assert led._resolve_characteristics(cast(BleakGATTServiceCollection, services))
     assert led._write_char is write_char
-    assert led._read_char is read_char
+    assert led._read_char is None
 
 
 def test_h6196_turn_on_uses_govee_packet(
@@ -151,6 +146,63 @@ def test_h6196_set_brightness_uses_govee_packet(
     loop.run_until_complete(led.set_brightness(180))
 
     led._send_command.assert_awaited_once_with([build_h6196_brightness_packet(180)])
+    assert led.brightness == 180
+
+
+def test_h6196_protocol_is_retained_after_nameless_advertisement(
+    make_led: Callable[..., LEDBLE],
+) -> None:
+    led = make_led(name="ihoment_H6196_F23C")
+    native_protocol = led._native_protocol
+    nameless_device = cast(BLEDevice, FakeBLEDevice(name=None))
+
+    led.set_ble_device_and_advertisement_data(nameless_device, None)
+
+    assert led._native_protocol is native_protocol
+
+
+def test_h6196_model_has_no_flux_led_protocol() -> None:
+    assert H6196_MODEL_DATA.protocols == []
+    with pytest.raises(ValueError, match="Native models"):
+        H6196_MODEL_DATA.protocol_for_version_num(0)
+
+
+def test_h6196_write_only_protocol_does_not_require_read_characteristic(
+    loop: asyncio.AbstractEventLoop, make_led: Callable[..., LEDBLE]
+) -> None:
+    led = make_led(name="ihoment_H6196_F23C")
+    client = Mock()
+    client.write_gatt_char = AsyncMock()
+    led._client = client
+    led._write_char = Mock()
+
+    loop.run_until_complete(led._execute_command_locked([b"\x01"]))
+
+    client.write_gatt_char.assert_awaited_once_with(led._write_char, b"\x01", False)
+
+
+def test_h6196_connects_without_notification_subscription(
+    loop: asyncio.AbstractEventLoop,
+    make_led: Callable[..., LEDBLE],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    led = make_led(name="ihoment_H6196_F23C")
+    client = Mock()
+    client.is_connected = True
+    client.start_notify = AsyncMock()
+    client.services = FakeServices({UUID_GOVEE_H6196_CONTROL_CHARACTERISTIC: Mock()})
+    monkeypatch.setattr(
+        "led_ble.led_ble.establish_connection", AsyncMock(return_value=client)
+    )
+
+    loop.run_until_complete(led._ensure_connected())
+
+    try:
+        assert led._client is client
+        client.start_notify.assert_not_awaited()
+    finally:
+        assert led._disconnect_timer is not None
+        led._disconnect_timer.cancel()
 
 
 def test_h6196_set_brightness_rejects_out_of_range(
