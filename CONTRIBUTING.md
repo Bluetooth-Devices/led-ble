@@ -4,6 +4,18 @@ Contributions are welcome, and they are greatly appreciated! Every little helps,
 
 You can contribute in many ways:
 
+## Project Scope
+
+This library supports unbranded Bluetooth LE LED devices that share the
+same family of protocols. Contributions that add model numbers or fix
+protocol handling for these similar-protocol devices are very welcome.
+
+Support for brand-specific ecosystems such as Govee is out of scope. These
+brands use their own protocols and cover hundreds of models with complex
+options, which is more than this library can absorb; they deserve a
+dedicated library. Pull requests adding brand-specific protocol stacks
+will be closed with a suggestion to publish a standalone library instead.
+
 ## Types of Contributions
 
 ### Report Bugs
