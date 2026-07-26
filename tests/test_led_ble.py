@@ -8,9 +8,12 @@ amount of connection bookkeeping that does not require a real bleak backend.
 from __future__ import annotations
 
 from dataclasses import replace
+from typing import cast
 from unittest.mock import AsyncMock, Mock
 
 import pytest
+from bleak.backends.device import BLEDevice
+from bleak.backends.scanner import AdvertisementData
 from flux_led.const import LevelWriteMode
 from flux_led.pattern import EFFECT_ID_NAME, EFFECT_LIST, PresetPattern
 
@@ -143,6 +146,24 @@ def test_dream_true_from_advertisement_local_name(make_led):
     assert led.dream is True
 
 
+def test_dream_survives_advertisement_without_local_name(make_led):
+    led = make_led(advertisement=FakeAdvertisement(local_name="Dream-1234"))
+    led.set_ble_device_and_advertisement_data(
+        cast(BLEDevice, FakeBLEDevice()),
+        cast(AdvertisementData, FakeAdvertisement(local_name=None)),
+    )
+    assert led.dream is True
+
+
+def test_dream_set_by_later_advertisement(led):
+    assert led.dream is False
+    led.set_ble_device_and_advertisement_data(
+        cast(BLEDevice, FakeBLEDevice()),
+        cast(AdvertisementData, FakeAdvertisement(local_name="Dream-1234")),
+    )
+    assert led.dream is True
+
+
 def test_dream_false_otherwise(led):
     assert led.dream is False
 
@@ -203,6 +224,14 @@ def test_notification_power_off_short_packet(led):
     led._state = replace(led._state, power=True)
     led._notification_handler(0, bytearray([0xCC, 0x24, 0x00, 0x00]))
     assert led.on is False
+
+
+def test_notification_short_packet_fires_callbacks(led):
+    received: list[LEDBLEState] = []
+    led.register_callback(received.append)
+    led._notification_handler(0, bytearray([0xCC, 0x23, 0x00, 0x00]))
+    assert len(received) == 1
+    assert received[0].power is True
 
 
 def test_notification_ignores_too_short_packet(led):

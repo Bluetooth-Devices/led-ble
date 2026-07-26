@@ -52,6 +52,15 @@ DREAM_EFFECTS = {f"Effect {i + 1}": i for i in range(0, 255)}
 DREAM_EFFECT_LIST = list(DREAM_EFFECTS)
 
 
+def _is_dream_name(advertisement_data: AdvertisementData | None) -> bool:
+    """Return True if the advertised local name identifies a Dream device."""
+    return bool(
+        advertisement_data is not None
+        and advertisement_data.local_name
+        and advertisement_data.local_name.startswith("Dream")
+    )
+
+
 class LEDBLE:
     def __init__(
         self, ble_device: BLEDevice, advertisement_data: AdvertisementData | None = None
@@ -73,6 +82,7 @@ class LEDBLE:
         self._model_data: LEDBLEModel | None = None
         self._protocol: PROTOCOL_TYPES | None = None
         self._resolve_protocol_event = asyncio.Event()
+        self._dream_name = _is_dream_name(advertisement_data)
 
     def set_ble_device_and_advertisement_data(
         self, ble_device: BLEDevice, advertisement_data: AdvertisementData
@@ -80,6 +90,10 @@ class LEDBLE:
         """Set the ble device."""
         self._ble_device = ble_device
         self._advertisement_data = advertisement_data
+        # Sticky: consumers call this on every advertisement, and the local
+        # name is absent from plain adverts (it only rides the scan response).
+        # Recomputing unconditionally would flip `dream` off mid-session.
+        self._dream_name = self._dream_name or _is_dream_name(advertisement_data)
 
     @property
     def address(self) -> str:
@@ -427,11 +441,7 @@ class LEDBLE:
     @property
     def dream(self) -> bool:
         """Return if the device is a dream."""
-        return self.model_num in (0x10,) or (
-            self._advertisement_data is not None
-            and self._advertisement_data.local_name is not None
-            and self._advertisement_data.local_name.startswith("Dream")
-        )
+        return self.model_num in (0x10,) or self._dream_name
 
     @property
     def effect(self) -> str | None:
@@ -452,6 +462,7 @@ class LEDBLE:
         if len(data) == 4 and data[0] == 0xCC:
             on = data[1] == 0x23
             self._state = replace(self._state, power=on)
+            self._fire_callbacks()
             return
         if len(data) < 11:
             return
