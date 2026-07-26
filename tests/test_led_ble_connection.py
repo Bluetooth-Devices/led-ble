@@ -28,6 +28,8 @@ def test_internal_address_property(led):
 def test_set_rgb_applies_brightness(loop, led):
     led._protocol = Mock()
     led._protocol.construct_levels_change.return_value = [b"\x02"]
+    led._resolve_protocol_event.set()
+    led._ensure_connected = AsyncMock()
     led._send_command = AsyncMock()
     loop.run_until_complete(led.set_rgb((255, 0, 0), brightness=64))
     # Brightness scaling dims the stored color away from full red.
@@ -439,3 +441,54 @@ def test_execute_disconnect_without_read_char_skips_stop_notify(
     client.stop_notify.assert_not_awaited()
     client.disconnect.assert_awaited_once()
     assert led._client is None
+
+
+# ---------------------------------------------------------------------------
+# Commands issued before anything has connected
+# ---------------------------------------------------------------------------
+
+
+def _connect_on_demand(led: LEDBLE) -> AsyncMock:
+    """Make ``_ensure_connected`` resolve the protocol, as a real connect does."""
+
+    async def _connect() -> None:
+        led._resolve_protocol_event.set()
+        led._set_protocol("LEDENET_ORIGINAL_RGBW")
+
+    mock = AsyncMock(side_effect=_connect)
+    led._ensure_connected = mock  # type: ignore[method-assign]
+    led._send_command_while_connected = AsyncMock()  # type: ignore[method-assign]
+    return mock
+
+
+@pytest.mark.parametrize(
+    ("method", "args"),
+    [
+        ("turn_on", ()),
+        ("turn_off", ()),
+        ("set_rgb", ((255, 0, 0),)),
+        ("set_rgbw", ((255, 0, 0, 0),)),
+        ("set_white", (128,)),
+        ("async_set_preset_pattern", (37, 50)),
+    ],
+)
+def test_command_connects_before_building_it(
+    loop: asyncio.AbstractEventLoop, led: LEDBLE, method: str, args: tuple[object, ...]
+) -> None:
+    """A first command on a fresh device must connect, not assume a protocol."""
+    connect = _connect_on_demand(led)
+
+    loop.run_until_complete(getattr(led, method)(*args))
+
+    connect.assert_awaited()
+    assert led._protocol is not None
+
+
+def test_ensure_protocol_returns_resolved_protocol(
+    loop: asyncio.AbstractEventLoop, led: LEDBLE
+) -> None:
+    _connect_on_demand(led)
+
+    protocol = loop.run_until_complete(led._ensure_protocol())
+
+    assert protocol is led._protocol

@@ -143,28 +143,37 @@ class LEDBLE:
         _, _, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
         return int(v * 255)
 
-    async def update(self) -> None:
-        """Update the LEDBLE."""
+    async def _ensure_protocol(self) -> PROTOCOL_TYPES:
+        """Connect if needed and return the resolved protocol.
+
+        The protocol is only known once the device has answered a state query,
+        so anything that builds a command must await this first rather than
+        assume a previous call already connected.
+        """
         await self._ensure_connected()
         await self._resolve_protocol()
-        _LOGGER.debug("%s: Updating", self.name)
         assert self._protocol is not None  # nosec
-        command = self._protocol.construct_state_query()
-        await self._send_command([command])
+        return self._protocol
+
+    async def update(self) -> None:
+        """Update the LEDBLE."""
+        protocol = await self._ensure_protocol()
+        _LOGGER.debug("%s: Updating", self.name)
+        await self._send_command([protocol.construct_state_query()])
 
     async def turn_on(self) -> None:
         """Turn on."""
         _LOGGER.debug("%s: Turn on", self.name)
-        assert self._protocol is not None  # nosec
-        await self._send_command(self._protocol.construct_state_change(True))
+        protocol = await self._ensure_protocol()
+        await self._send_command(protocol.construct_state_change(True))
         self._state = replace(self._state, power=True)
         self._fire_callbacks()
 
     async def turn_off(self) -> None:
         """Turn off."""
         _LOGGER.debug("%s: Turn off", self.name)
-        assert self._protocol is not None  # nosec
-        await self._send_command(self._protocol.construct_state_change(False))
+        protocol = await self._ensure_protocol()
+        await self._send_command(protocol.construct_state_change(False))
         self._state = replace(self._state, power=False)
         self._fire_callbacks()
 
@@ -192,9 +201,9 @@ class LEDBLE:
         if brightness is not None:
             rgb = self._calculate_brightness(rgb, brightness)
         _LOGGER.debug("%s: Set rgb after brightness: %s", self.name, rgb)
-        assert self._protocol is not None  # nosec
+        protocol = await self._ensure_protocol()
         r, g, b = rgb
-        command = self._protocol.construct_levels_change(
+        command = protocol.construct_levels_change(
             persist=True,
             red=r,
             green=g,
@@ -222,9 +231,9 @@ class LEDBLE:
                 raise ValueError(f"Value {value} is outside the valid range of 0-255")
         r, g, b, w = rgbw_brightness(rgbw, brightness)
         _LOGGER.debug("%s: Set rgbw after brightness: %s", self.name, rgbw)
-        assert self._protocol is not None  # nosec
+        protocol = await self._ensure_protocol()
 
-        command = self._protocol.construct_levels_change(
+        command = protocol.construct_levels_change(
             persist=True,
             red=r,
             green=g,
@@ -248,9 +257,9 @@ class LEDBLE:
         _LOGGER.debug("%s: Set white: %s", self.name, brightness)
         if not 0 <= brightness <= 255:
             raise ValueError(f"Value {brightness} is outside the valid range of 0-255")
-        assert self._protocol is not None  # nosec
+        protocol = await self._ensure_protocol()
 
-        command = self._protocol.construct_levels_change(
+        command = protocol.construct_levels_change(
             persist=True,
             red=0,
             green=0,
@@ -289,6 +298,7 @@ class LEDBLE:
         self, effect: int, speed: int, brightness: int = 100
     ) -> None:
         """Set a preset pattern on the device."""
+        await self._ensure_protocol()
         command = self._generate_preset_pattern(effect, speed, brightness)
         await self._send_command(command)
         if self.dream:
