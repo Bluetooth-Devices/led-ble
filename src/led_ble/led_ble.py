@@ -34,7 +34,6 @@ from .const import (
 from .exceptions import CharacteristicMissingError
 from .model_db import get_model
 from .models import LEDBLEState
-from .util import asyncio_timeout
 
 BLEAK_BACKOFF_TIME = 0.25
 
@@ -655,7 +654,7 @@ class LEDBLE:
         if self._resolve_protocol_event.is_set():
             return
         await self._send_command_while_connected([STATE_COMMAND])
-        async with asyncio_timeout(10):
+        async with asyncio.timeout(10):
             await self._resolve_protocol_event.wait()
 
     def _set_protocol(self, protocol: str) -> None:

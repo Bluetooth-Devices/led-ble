@@ -5,7 +5,7 @@ license = "Apache-2.0"
 description = "Control a wide range of LED BLE devices"
 authors = [{ name = "J. Nick Koston", email = "nick@koston.org" }]
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dynamic = ["classifiers", "dependencies", "optional-dependencies"]
 
 [project.urls]
@@ -27,7 +27,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.10,<3.14"
+python = ">=3.11,<3.14"
 
 # Documentation Dependencies
 Sphinx = {version = ">=5,<8", optional = true}
@@ -35,7 +35,6 @@ sphinx-rtd-theme = {version = ">=1,<4", optional = true}
 myst-parser = {version = ">=0.18,<3.1", optional = true}
 bleak-retry-connector = ">=2.3.0"
 bleak = ">=0.22.0"
-async-timeout = {version = ">=5.0.1", python = "<3.11"}
 flux-led = ">=0.28.32"
 
 [tool.poetry.extras]
@@ -75,7 +74,7 @@ profile = "black"
 known_first_party = ["led_ble", "tests"]
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py311"
 
 [tool.mypy]
 check_untyped_defs = true
