@@ -13,3 +13,5 @@ class LEDBLEState:
     mode: int = 0
     speed: int = 0
     version_num: int = 0
+    color_order: int | None = None
+    device_type: int | None = None
