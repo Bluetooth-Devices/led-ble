@@ -257,6 +257,28 @@ def test_register_and_unregister_callback(led):
     assert len(calls) == 1
 
 
+def test_unregister_callback_is_idempotent(led):
+    unregister = led.register_callback(lambda state: None)
+    unregister()
+    unregister()
+    assert led._callbacks == []
+
+
+def test_callback_may_unregister_itself_during_dispatch(led):
+    """Self-removal must not skip the callbacks that follow it."""
+    fired: list[str] = []
+
+    def first(state: LEDBLEState) -> None:
+        fired.append("first")
+        unregister_first()
+
+    unregister_first = led.register_callback(first)
+    led.register_callback(lambda state: fired.append("second"))
+
+    led._fire_callbacks()
+    assert fired == ["first", "second"]
+
+
 # ---------------------------------------------------------------------------
 # Protocol resolution helpers
 # ---------------------------------------------------------------------------

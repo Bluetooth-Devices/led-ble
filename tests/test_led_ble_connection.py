@@ -85,6 +85,18 @@ def test_disconnect_schedules_execution(loop, led):
     led._execute_timed_disconnect.assert_awaited_once()
 
 
+def test_stop_cancels_the_disconnect_timer(loop, led):
+    """``stop()`` must leave no armed timer holding a reference to the device."""
+    led._reset_disconnect_timer()
+    timer = led._disconnect_timer
+    assert timer is not None
+
+    loop.run_until_complete(led.stop())
+
+    assert led._disconnect_timer is None
+    assert timer.cancelled()
+
+
 def test_disconnect_holds_task_reference_until_done(loop, led):
     """The disconnect task must be referenced so it is not GC'd mid-flight."""
     started = asyncio.Event()
