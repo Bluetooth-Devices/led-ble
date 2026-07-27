@@ -319,7 +319,9 @@ class LEDBLE:
 
     def _fire_callbacks(self) -> None:
         """Fire the callbacks."""
-        for callback in self._callbacks:
+        # Iterate a copy: a callback is allowed to unregister itself (or another
+        # callback) during dispatch, which would otherwise skip its successor.
+        for callback in list(self._callbacks):
             callback(self._state)
 
     def register_callback(
@@ -328,7 +330,8 @@ class LEDBLE:
         """Register a callback to be called when the state changes."""
 
         def unregister_callback() -> None:
-            self._callbacks.remove(callback)
+            if callback in self._callbacks:
+                self._callbacks.remove(callback)
 
         self._callbacks.append(callback)
         return unregister_callback
@@ -535,6 +538,9 @@ class LEDBLE:
     async def _execute_disconnect(self) -> None:
         """Execute disconnection."""
         async with self._connect_lock:
+            if self._disconnect_timer:
+                self._disconnect_timer.cancel()
+                self._disconnect_timer = None
             read_char = self._read_char
             client = self._client
             self._expected_disconnect = True
