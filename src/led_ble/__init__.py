@@ -10,8 +10,8 @@ from .led_ble import BLEAK_EXCEPTIONS, LEDBLE, LEDBLEState
 
 __all__ = [
     "BLEAK_EXCEPTIONS",
-    "CharacteristicMissingError",
     "LEDBLE",
+    "CharacteristicMissingError",
     "LEDBLEState",
     "get_device",
 ]
