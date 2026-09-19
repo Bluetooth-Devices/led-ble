@@ -460,9 +460,14 @@ class LEDBLE:
         preset_pattern = data[3]
         mode = data[4]
         speed = data[5]
-        r = data[6]
-        g = data[7]
-        b = data[8]
+        if model_num == 0x10:
+            r = data[6]
+            g = data[8]
+            b = data[7]
+        else:
+            r = data[6]
+            g = data[7]
+            b = data[8]
         w = data[9]
         version = data[10]
         self._state = LEDBLEState(
