@@ -460,7 +460,7 @@ class LEDBLE:
         preset_pattern = data[3]
         mode = data[4]
         speed = data[5]
-        if model_num == 16:
+        if model_num == 0x10:
             r = data[6]
             g = data[8]
             b = data[7]
