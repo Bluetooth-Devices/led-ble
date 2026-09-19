@@ -193,7 +193,6 @@ def test_effect_to_pattern_dream_invalid_raises(led):
 # Notification handler (pure packet parsing)
 # ---------------------------------------------------------------------------
 
-
 def test_notification_model_16(led):
     led._notification_handler(0, bytearray([0x66, 0x10, 0x23, 0x01, 0x00, 0x08, 0x8A, 0x06, 0x47, 0x00, 0x03, 0x99]))
     assert led.state.rgb == (138, 71, 6)
