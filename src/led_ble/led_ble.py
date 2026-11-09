@@ -48,7 +48,7 @@ _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_ATTEMPTS = 3
 
-DREAM_EFFECTS = {f"Effect {i + 1}": i for i in range(0, 255)}
+DREAM_EFFECTS = {f"Effect {i + 1}": i for i in range(255)}
 DREAM_EFFECT_LIST = list(DREAM_EFFECTS)
 
 
