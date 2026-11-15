@@ -15,7 +15,7 @@ from bleak_retry_connector import BleakNotFoundError
 
 from led_ble.const import STATE_COMMAND
 from led_ble.exceptions import CharacteristicMissingError
-from led_ble.led_ble import LEDBLE
+from led_ble.led_ble import DISCONNECT_DELAY, LEDBLE
 
 # A model_num / version that resolves to a real flux_led protocol class.
 KNOWN_MODEL = 0xE3
@@ -48,6 +48,25 @@ def test_reset_disconnect_timer_schedules_and_clears_expected_flag(loop, led):
         assert led._expected_disconnect is False
     finally:
         led._disconnect_timer.cancel()
+
+
+def test_disconnect_delay_defaults_to_module_constant(loop, led):
+    assert led._disconnect_delay == DISCONNECT_DELAY
+
+
+def test_custom_disconnect_delay_schedules_timer_with_that_delay(loop, led):
+    led._disconnect_delay = 5
+    led.loop = Mock(wraps=led.loop)
+    led._reset_disconnect_timer()
+    try:
+        assert led.loop.call_later.call_args.args[0] == 5
+    finally:
+        led._disconnect_timer.cancel()
+
+
+def test_set_disconnect_delay_updates_delay(loop, led):
+    led.set_disconnect_delay(7)
+    assert led._disconnect_delay == 7
 
 
 def test_reset_disconnect_timer_cancels_previous(loop, led):
