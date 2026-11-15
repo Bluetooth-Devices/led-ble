@@ -54,10 +54,19 @@ DREAM_EFFECT_LIST = list(DREAM_EFFECTS)
 
 class LEDBLE:
     def __init__(
-        self, ble_device: BLEDevice, advertisement_data: AdvertisementData | None = None
+        self,
+        ble_device: BLEDevice,
+        advertisement_data: AdvertisementData | None = None,
+        *,
+        disconnect_delay: float = DISCONNECT_DELAY,
     ) -> None:
-        """Init the LEDBLE."""
+        """Init the LEDBLE.
+
+        disconnect_delay is the number of idle seconds after the last command
+        before the connection is closed, freeing the Bluetooth slot.
+        """
         self._ble_device = ble_device
+        self._disconnect_delay = disconnect_delay
         self._advertisement_data = advertisement_data
         self._operation_lock = asyncio.Lock()
         self._state = LEDBLEState()
@@ -484,13 +493,17 @@ class LEDBLE:
 
         self._fire_callbacks()
 
+    def set_disconnect_delay(self, delay: float) -> None:
+        """Change the idle time before disconnecting; applies from the next command."""
+        self._disconnect_delay = delay
+
     def _reset_disconnect_timer(self) -> None:
         """Reset disconnect timer."""
         if self._disconnect_timer:
             self._disconnect_timer.cancel()
         self._expected_disconnect = False
         self._disconnect_timer = self.loop.call_later(
-            DISCONNECT_DELAY, self._disconnect
+            self._disconnect_delay, self._disconnect
         )
 
     def _disconnected(self, client: BleakClientWithServiceCache) -> None:
@@ -528,7 +541,7 @@ class LEDBLE:
         _LOGGER.debug(
             "%s: Disconnecting after timeout of %s",
             self.name,
-            DISCONNECT_DELAY,
+            self._disconnect_delay,
         )
         await self._execute_disconnect()
 
