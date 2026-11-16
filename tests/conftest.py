@@ -10,9 +10,8 @@ are exercised with ``loop.run_until_complete(...)``.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from typing import cast
-from collections.abc import Callable
 
 import pytest
 from bleak.backends.device import BLEDevice
